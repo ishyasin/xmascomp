@@ -62,12 +62,14 @@
           <span class="hint" id="codeHint">Players type this on the homepage. 3 to 40 characters, not case-sensitive. Changing it doesn't affect anyone already playing.</span>
         </div>
       </form>
+      <p class="hint" id="qAttempts" style="margin:0;font-size:14px;color:#c9d3e6"></p>
       <p class="okmsg" id="qOk" role="status"></p>
       <p class="msg" id="qMsg" role="alert"></p>
     </section>
     <div class="tabs" role="tablist" aria-label="Admin sections">
       <button role="tab" id="tEvent" aria-controls="pEvent" aria-selected="true" type="button">Event</button>
       <button role="tab" id="tEntries" aria-controls="pEntries" aria-selected="false" type="button" tabindex="-1">Entries and scores</button>
+      <button role="tab" id="tQuiz" aria-controls="pQuiz" aria-selected="false" type="button" tabindex="-1">Quiz questions</button>
       <button role="tab" id="tLog" aria-controls="pLog" aria-selected="false" type="button" tabindex="-1">Activity log</button>
     </div>
 
@@ -128,6 +130,54 @@
           <button class="btn bad small" type="submit">Delete all entries</button>
         </form>
       </div>
+    </section>
+
+    <!-- Quiz questions -->
+    <section id="pQuiz" role="tabpanel" aria-labelledby="tQuiz" hidden>
+      <div class="stats">
+        <div><span>Questions in the quiz</span><strong id="qOn">0</strong></div>
+        <div><span>Hidden</span><strong id="qOff">0</strong></div>
+        <div><span>Total points available</span><strong id="qPts">0</strong></div>
+      </div>
+      <p class="qnote">Questions and answers are stored only in the database. Players get one question at a time, with the 4 options in a different order for each player and nothing that shows which is right. The server marks each answer.</p>
+      <div class="grid2">
+        <form class="box" id="qForm" novalidate>
+          <h2 id="qfTitle">Add a question</h2>
+          <div class="field"><label for="qText">Question</label><textarea id="qText" rows="3" maxlength="300" required></textarea></div>
+          <fieldset class="qopts"><legend>Options. Tick the correct one.</legend>
+            <div class="qopt"><input type="radio" name="qRight" id="qR1" value="1" aria-label="Option 1 is correct"><label class="sr-only" for="qO1">Option 1</label><input id="qO1" type="text" maxlength="150" placeholder="Option 1"></div>
+            <div class="qopt"><input type="radio" name="qRight" id="qR2" value="2" aria-label="Option 2 is correct"><label class="sr-only" for="qO2">Option 2</label><input id="qO2" type="text" maxlength="150" placeholder="Option 2"></div>
+            <div class="qopt"><input type="radio" name="qRight" id="qR3" value="3" aria-label="Option 3 is correct"><label class="sr-only" for="qO3">Option 3</label><input id="qO3" type="text" maxlength="150" placeholder="Option 3"></div>
+            <div class="qopt"><input type="radio" name="qRight" id="qR4" value="4" aria-label="Option 4 is correct"><label class="sr-only" for="qO4">Option 4</label><input id="qO4" type="text" maxlength="150" placeholder="Option 4"></div>
+          </fieldset>
+          <div class="qrow">
+            <div class="field"><label for="qPoints">Points</label><input id="qPoints" type="number" min="0" max="1000" step="10" value="100"></div>
+            <label class="qchk"><input id="qActive" type="checkbox" checked> In the quiz</label>
+          </div>
+          <p class="msg" id="qMsg" role="alert"></p>
+          <div class="inline"><button class="btn" type="submit" id="qSave">Add question</button><button class="btn ghost" type="button" id="qCancel" hidden>Cancel edit</button></div>
+        </form>
+        <form class="box" id="qBulk" novalidate>
+          <h2>Add many at once</h2>
+          <p>Paste from Excel or a CSV, one question per line: <strong>Question, Option 1, Option 2, Option 3, Option 4, Correct (1 to 4)</strong>, and optionally Points. A heading row is skipped.</p>
+          <div class="field"><label for="qPaste" class="sr-only">Questions to add</label><textarea id="qPaste" rows="7" placeholder="Which vitamin is made in the skin in sunlight?, Vitamin A, Vitamin C, Vitamin D, Vitamin K, 3"></textarea></div>
+          <p class="msg" id="qbMsg" role="alert"></p>
+          <div class="inline"><button class="btn" type="submit" id="qbGo">Add these questions</button><button class="btn ghost" type="button" id="qTpl">Download template</button></div>
+        </form>
+      </div>
+      <div class="toolbar" style="margin-top:22px">
+        <h2 style="margin:0 auto 0 0;font-size:20px">Questions, in the order they're asked</h2>
+        <label class="qchk"><input id="qShow" type="checkbox"> Show answers</label>
+        <button class="btn ghost small" type="button" id="qRefresh">Refresh</button>
+      </div>
+      <div class="board">
+        <table id="qTable">
+          <caption class="sr-only">Quiz questions</caption>
+          <thead><tr><th scope="col">#</th><th scope="col">Question and options</th><th scope="col" class="num">Points</th><th scope="col" class="num">Answered</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody><tr><td colspan="5" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <p class="msg" id="qlMsg" role="alert"></p>
     </section>
 
     <!-- Log -->
@@ -207,11 +257,12 @@
   $("signOut").addEventListener("click", async () => { await db.auth.signOut(); location.reload(); });
 
   // ---------- Tabs ----------
-  const tabs = [["tEvent", "pEvent"], ["tEntries", "pEntries"], ["tLog", "pLog"]];
+  const tabs = [["tEvent", "pEvent"], ["tEntries", "pEntries"], ["tQuiz", "pQuiz"], ["tLog", "pLog"]];
   function selectTab(id) {
     tabs.forEach(([t, p]) => { const on = t === id; $(t).setAttribute("aria-selected", on); $(t).tabIndex = on ? 0 : -1; $(p).hidden = !on; });
     if (id === "tEntries") loadEntries();
     if (id === "tLog") loadLog();
+    if (id === "tQuiz") loadQuestions();
   }
   tabs.forEach(([t], i) => {
     $(t).addEventListener("click", () => selectTab(t));
@@ -264,7 +315,17 @@
   }
   async function loadSettings() {
     try { const r = await rpc("admin_get_settings"); fill(Array.isArray(r) ? r[0] : r); } catch (e) { $("evMsg").textContent = e.message; }
+    loadAttempts();
   }
+  async function loadAttempts() {
+    try {
+      const r = await rpc("admin_code_attempts"); const a = Array.isArray(r) ? r[0] : r;
+      const n = Number(a.last_hour) || 0, l = Number(a.locked_connections) || 0;
+      $("qAttempts").textContent = "Wrong code attempts in the last hour: " + n + (l ? ". " + l + (l === 1 ? " connection is" : " connections are") + " locked out for guessing." : ".");
+      $("qAttempts").style.color = l ? "#e8b830" : "#c9d3e6";
+    } catch (e) { $("qAttempts").textContent = ""; }
+  }
+  setInterval(() => { if (settings) loadAttempts(); }, 60000);
   async function save(overrides, okText) {
     $("evMsg").textContent = ""; $("evOk").textContent = ""; $("saveBtn").disabled = true;
     const args = Object.assign({
@@ -307,8 +368,9 @@
   });
   $("genCode").addEventListener("click", () => {
     const words = ["SLEIGH", "TINSEL", "HOLLY", "SNOW", "ELF", "STAR", "BAUBLE", "CRACKER", "MISTLETOE", "REINDEER"];
-    const a = new Uint32Array(2); crypto.getRandomValues(a);
-    $("fCode").value = words[a[0] % words.length] + "-" + String(1000 + (a[1] % 9000));
+    const a = new Uint32Array(3); crypto.getRandomValues(a);
+    const w1 = words[a[0] % words.length]; let w2 = words[a[1] % words.length]; if (w2 === w1) w2 = words[(a[1] + 1) % words.length];
+    $("fCode").value = w1 + "-" + w2 + "-" + String(1000 + (a[2] % 9000));
     $("qMsg").textContent = ""; $("qOk").textContent = "New code generated. Press Set code to use it.";
   });
   setInterval(status, 30000);
@@ -395,8 +457,119 @@
     a.download = "competition-entries-" + new Date().toISOString().slice(0, 10) + ".csv"; document.body.appendChild(a); a.click(); a.remove();
   });
 
+  // ---------- Quiz questions ----------
+  let questions = [], qEditing = null;
+  const qInputs = [1, 2, 3, 4].map(i => $("qO" + i));
+  function qReset() {
+    qEditing = null; $("qForm").reset(); $("qPoints").value = 100; $("qActive").checked = true;
+    $("qfTitle").textContent = "Add a question"; $("qSave").textContent = "Add question"; $("qCancel").hidden = true; $("qMsg").textContent = "";
+  }
+  async function loadQuestions() {
+    $("qlMsg").textContent = "";
+    try { questions = await rpc("admin_list_questions") || []; renderQuestions(); } catch (e) { $("qlMsg").textContent = e.message; }
+  }
+  function renderQuestions() {
+    const on = questions.filter(q => q.active), tb = $("qTable").tBodies[0], show = $("qShow").checked; tb.textContent = "";
+    $("qOn").textContent = on.length; $("qOff").textContent = questions.length - on.length;
+    $("qPts").textContent = on.reduce((a, q) => a + q.points, 0).toLocaleString("en-GB");
+    if (!questions.length) { const tr = document.createElement("tr"), c = td("No questions yet. Add one above.", "empty"); c.colSpan = 5; tr.appendChild(c); tb.appendChild(tr); return; }
+    let n = 0;
+    questions.forEach((q, idx) => {
+      const tr = document.createElement("tr"); if (!q.active) tr.className = "is-hidden";
+      const cell = document.createElement("td"), qt = document.createElement("strong"); qt.className = "qq"; qt.textContent = q.question; cell.appendChild(qt);
+      if (!q.active) { const s = document.createElement("span"); s.className = "sub"; s.textContent = "Hidden: not in the quiz"; cell.appendChild(s); }
+      const ol = document.createElement("ol"); ol.className = "qlist";
+      q.options.forEach((o, i) => { const li = document.createElement("li"); li.textContent = o; if (show && i === q.correct_index) { li.className = "right"; li.append(" ✓"); } ol.appendChild(li); });
+      cell.appendChild(ol);
+      const ans = td(q.answered ? q.answered + (q.correct_pct != null ? " · " + q.correct_pct + "% right" : "") : "None", "num");
+      const acts = document.createElement("td"); acts.className = "acts";
+      const b = (label, cls, fn, aria, dis) => { const x = document.createElement("button"); x.type = "button"; x.textContent = label; if (cls) x.className = cls; x.setAttribute("aria-label", aria); x.disabled = !!dis; x.addEventListener("click", fn); return x; };
+      const short = q.question.slice(0, 40);
+      acts.append(
+        b("↑", "", () => qMove(idx, -1), "Move up: " + short, idx === 0),
+        b("↓", "", () => qMove(idx, 1), "Move down: " + short, idx === questions.length - 1),
+        b("Edit", "", () => qEdit(q), "Edit: " + short),
+        b(q.active ? "Hide" : "Show", "", () => qSaveRow(q, { p_active: !q.active }), (q.active ? "Hide: " : "Show: ") + short),
+        b("Delete", "del", () => qDelete(q), "Delete: " + short));
+      tr.append(td(q.active ? String(++n) : "–", "pos"), cell, td(String(q.points), "num"), ans, acts); tb.appendChild(tr);
+    });
+  }
+  const rowArgs = q => ({ p_id: q.id, p_question: q.question, p_options: q.options, p_correct: q.correct_index + 1, p_points: q.points, p_sort: q.sort_order, p_active: q.active });
+  async function qSaveRow(q, changes) {
+    try { await rpc("admin_save_question", Object.assign(rowArgs(q), changes)); await loadQuestions(); } catch (e) { $("qlMsg").textContent = e.message; }
+  }
+  async function qMove(idx, dir) {
+    const a = questions[idx], b = questions[idx + dir]; if (!b) return;
+    // give every question a distinct order first, then swap the two
+    const order = questions.map((q, i) => i + 1); order[idx] = idx + dir + 1; order[idx + dir] = idx + 1;
+    try { for (let i = 0; i < questions.length; i++) if (questions[i].sort_order !== order[i]) await rpc("admin_save_question", Object.assign(rowArgs(questions[i]), { p_sort: order[i] })); }
+    catch (e) { $("qlMsg").textContent = e.message; }
+    await loadQuestions();
+  }
+  function qEdit(q) {
+    qEditing = q; $("qMsg").textContent = "";
+    $("qText").value = q.question; q.options.forEach((o, i) => { qInputs[i].value = o; }); $("qR" + (q.correct_index + 1)).checked = true;
+    $("qPoints").value = q.points; $("qActive").checked = q.active;
+    $("qfTitle").textContent = "Edit question"; $("qSave").textContent = "Save question"; $("qCancel").hidden = false;
+    if (q.answered) $("qMsg").textContent = "Already answered by " + q.answered + ", so only “In the quiz” can change.";
+    $("qText").focus(); $("qForm").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  async function qDelete(q) {
+    if (!confirm("Delete this question? This can't be undone.\n\n" + q.question)) return;
+    try { await rpc("admin_delete_question", { p_id: q.id }); if (qEditing && qEditing.id === q.id) qReset(); await loadQuestions(); } catch (e) { $("qlMsg").textContent = e.message; }
+  }
+  $("qCancel").addEventListener("click", qReset);
+  $("qShow").addEventListener("change", renderQuestions);
+  $("qRefresh").addEventListener("click", loadQuestions);
+  $("qForm").addEventListener("submit", async ev => {
+    ev.preventDefault(); $("qMsg").textContent = "";
+    const right = document.querySelector("input[name=qRight]:checked");
+    if (!$("qText").value.trim()) { $("qMsg").textContent = "Type the question."; return $("qText").focus(); }
+    const empty = qInputs.find(i => !i.value.trim()); if (empty) { $("qMsg").textContent = "Fill in all 4 options."; return empty.focus(); }
+    if (!right) { $("qMsg").textContent = "Tick the correct option."; return; }
+    $("qSave").disabled = true;
+    try {
+      await rpc("admin_save_question", { p_id: qEditing ? qEditing.id : null, p_question: $("qText").value, p_options: qInputs.map(i => i.value), p_correct: Number(right.value),
+        p_points: Number($("qPoints").value || 100), p_sort: qEditing ? qEditing.sort_order : null, p_active: $("qActive").checked });
+      qReset(); await loadQuestions(); $("qText").focus();
+    } catch (e) { $("qMsg").textContent = e.message; }
+    $("qSave").disabled = false;
+  });
+  // Bulk paste: CSV (commas, quotes allowed) or tab-separated from Excel
+  function parseRows(text) {
+    const tab = text.indexOf("\t") >= 0, rows = []; let row = [], f = "", q = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; continue; }
+      if (c === '"' && f.trim() === "") { q = true; f = ""; }
+      else if (c === (tab ? "\t" : ",")) { row.push(f.trim()); f = ""; }
+      else if (c === "\n" || c === "\r") { if (c === "\r" && text[i + 1] === "\n") i++; row.push(f.trim()); if (row.some(x => x)) rows.push(row); row = []; f = ""; }
+      else f += c;
+    }
+    row.push(f.trim()); if (row.some(x => x)) rows.push(row);
+    return rows;
+  }
+  $("qBulk").addEventListener("submit", async ev => {
+    ev.preventDefault(); $("qbMsg").textContent = "";
+    let rows = parseRows($("qPaste").value);
+    if (rows.length && !/^[1-4]$/.test(rows[0][5] || "")) rows = rows.slice(1);   // heading row
+    if (!rows.length) { $("qbMsg").textContent = "Nothing to add. Paste one question per line."; return; }
+    const bad = [];
+    rows.forEach((r, i) => { if (r.length < 6 || r.slice(0, 5).some(x => !x) || !/^[1-4]$/.test(r[5]) || (r[6] && !/^\d+$/.test(r[6]))) bad.push(i + 1); });
+    if (bad.length) { $("qbMsg").textContent = "Check line" + (bad.length > 1 ? "s " : " ") + bad.slice(0, 8).join(", ") + ": each needs a question, 4 options and the correct option number (1 to 4). Nothing was added."; return; }
+    $("qbGo").disabled = true; let added = 0;
+    try { for (const r of rows) { await rpc("admin_save_question", { p_id: null, p_question: r[0], p_options: r.slice(1, 5), p_correct: Number(r[5]), p_points: r[6] ? Number(r[6]) : 100, p_sort: null, p_active: true }); added++; } $("qPaste").value = ""; }
+    catch (e) { $("qbMsg").textContent = "Added " + added + " of " + rows.length + ". Line " + (added + 1) + ": " + e.message; $("qPaste").value = rows.slice(added).map(r => r.map(x => /[",]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x).join(", ")).join("\n"); }
+    $("qbGo").disabled = false; await loadQuestions();
+    if (added && added === rows.length) { $("qbMsg").textContent = ""; alert(added + (added === 1 ? " question" : " questions") + " added."); }
+  });
+  $("qTpl").addEventListener("click", () => {
+    const csv = "Question,Option 1,Option 2,Option 3,Option 4,Correct (1-4),Points\r\n\"Which vitamin is made in the skin in sunlight?\",Vitamin A,Vitamin C,Vitamin D,Vitamin K,3,100\r\n";
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" })); a.download = "quiz-questions-template.csv"; document.body.appendChild(a); a.click(); a.remove();
+  });
+
   // ---------- Log ----------
-  const LABEL = { settings_saved: "Event settings saved", entry_updated: "Entry edited", entry_deleted: "Entry deleted", all_entries_deleted: "All entries deleted" };
+  const LABEL = { settings_saved: "Event settings saved", entry_updated: "Entry edited", entry_deleted: "Entry deleted", all_entries_deleted: "All entries deleted", question_added: "Question added", question_updated: "Question edited", question_deleted: "Question deleted" };
   async function loadLog() {
     const ul = $("log"); ul.textContent = "";
     let rows; try { rows = await rpc("admin_get_log", { p_limit: 100 }); } catch (e) { const li = document.createElement("li"); li.textContent = e.message; ul.appendChild(li); return; }
@@ -409,6 +582,7 @@
       if (r.action === "entry_updated" && d.before && d.after) extra = d.before.name + (d.before.name !== d.after.name ? " → " + d.after.name : "") + (d.before.hidden !== d.after.hidden ? (d.after.hidden ? ", hidden" : ", shown") : "") + ((d.before.flight !== undefined && (d.before.flight !== d.after.flight || d.before.grotto !== d.after.grotto || d.before.quiz !== d.after.quiz)) ? ", scores changed" : "");
       if (r.action === "entry_deleted") extra = d.name + " (total " + d.total + ")";
       if (r.action === "all_entries_deleted") extra = d.count + " entries";
+      if (/^question_/.test(r.action)) extra = (d.question || "").slice(0, 80) + (r.action === "question_updated" && d.active === false ? " (hidden)" : "");
       li.append(t, s, extra ? ": " + extra : ""); ul.appendChild(li);
     });
   }

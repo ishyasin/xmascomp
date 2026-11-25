@@ -235,6 +235,7 @@
     try {
       const rows = await XQ.rpc("start_run", { p_code: code, p_name: name, p_email: email });
       const r = Array.isArray(rows) ? rows[0] : rows;
+      if (!r || !r.run_id) { $("enterMsg").textContent = "That access code is not right. Go back and check it."; $("enterBtn").disabled = false; return; }
       XQ.run.set({ id: r.run_id, token: r.token, name, step: 0, best: {} });
       location.href = "play.html";
     } catch (err) { $("enterMsg").textContent = err.message; $("enterBtn").disabled = false; }

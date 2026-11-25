@@ -37,8 +37,8 @@
   const panel = $("panel");
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const GAME = {
-    flight: { file: "games/reindeer-flight.js", global: "XmasSleigh", live: () => (window.__xmasLive ? window.__xmasLive() : 0),
-      how: ["Steer with the mouse, a finger, the arrow keys or WASD.", "Hold Space (or press and hold) to boost.", "Collect presents and fly through the wreaths. Watch out for the waves.", "Fly as many times as you like. Your best flight counts."] },
+    flight: { file: "games/reindeer-flight.js", global: "XmasSleigh", live: () => (window.__xmasLive ? window.__xmasLive() : 0), clockOnTakeOff: true,
+      how: ["Keyboard only: steer with the arrow keys or WASD, hold Space to boost.", "Start with the short practice tutorial, or skip it. Your clock starts when you take off for real.", "Land on Worthing Pier and the Royal Sussex County helipad for bonus points. Fly through wreaths; a golden wreath does an aileron roll.", "Fly as many times as you like. Your best flight counts."] },
     grotto: { file: "games/grotto-dash.js", global: "XmasGrotto", live: () => (window.XmasGrotto && window.XmasGrotto.live ? window.XmasGrotto.live() : 0),
       how: ["Gift tags come along the belt.", "Press ← for Chichester & West, ↓ for Worthing & Coast, → for Horsham & North (or tap the sacks).", "Three wrong sacks ends a game.", "Play as many times as you like. Your best game counts."] },
     quiz: { how: ["One question at a time.", "Pick one answer. Your first answer is the one that counts.", "Answer as many as you can before the time runs out."] }
@@ -113,7 +113,9 @@
     };
     return me;
   }
-  window.__xmasGameStart = round => { current = Reporter(round); };
+  // A game calls this when a real attempt starts. For games that start the clock on take-off, the first call also starts the round.
+  let armed = null;
+  window.__xmasGameStart = round => { if (armed) { const go = armed; armed = null; go(round); } else current = Reporter(round); };
   // The games call sb.rpc(...) when a game ends; that final score goes to the server here.
   window.sb = {
     rpc(name, args) {
@@ -135,7 +137,7 @@
       steps(),
       el("p", { class: "eyebrow" }, "Round " + (R.step + 1) + " of " + ev.rounds.length),
       el("h1", {}, info.name),
-      el("p", {}, resumed ? "Your clock for this round is still running." : "You have " + mins + (mins === 1 ? " minute" : " minutes") + ". The clock starts when you press the button."),
+      el("p", {}, resumed ? "Your clock for this round is still running." : "You have " + mins + (mins === 1 ? " minute" : " minutes") + (GAME[key] && GAME[key].clockOnTakeOff ? ". The clock starts when you take off for real, after the practice tutorial." : ". The clock starts when you press the button.")),
       el("ul", { class: "howto" }, GAME[key].how.map(t => el("li", {}, t))),
       el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: e => { e.target.disabled = true; key === "quiz" ? quiz() : game(key); } }, resumed ? "Back to " + info.name : "Start " + info.name))
     );
@@ -143,13 +145,24 @@
 
   async function game(key) {
     const g = GAME[key];
-    try { if (!window[g.global]) await loadScript(g.file); await beginRound(key); } catch (e) { return errorPanel(e.message); }
-    ending = false;
-    if (deadline - performance.now() <= 0) return roundOver(key);
-    window[g.global].open();
-    startTimer(() => roundOver(key));
-    clearInterval(watchId); clearInterval(pollId);
-    watchId = setInterval(() => { if (!window.__pdOpen && !ending) { clearInterval(watchId); clearInterval(pollId); paused(key); } }, 400);
+    try { if (!window[g.global]) await loadScript(g.file); } catch (e) { return errorPanel(e.message); }
+    ending = false; clearInterval(watchId); clearInterval(pollId);
+    if (g.clockOnTakeOff && !(R.started && R.started[key])) {
+      // Tutorial first: the server round (and the timer) starts on the first real take-off.
+      armed = async round => {
+        try { await beginRound(key); } catch (e) { try { window[g.global].close(); } catch (x) {} window.__pdOpen = false; return errorPanel(e.message); }
+        current = Reporter(round);
+        if (deadline - performance.now() <= 0) return roundOver(key);
+        startTimer(() => roundOver(key));
+      };
+      window[g.global].open();
+    } else {
+      try { await beginRound(key); } catch (e) { return errorPanel(e.message); }
+      if (deadline - performance.now() <= 0) return roundOver(key);
+      window[g.global].open();
+      startTimer(() => roundOver(key));
+    }
+    watchId = setInterval(() => { if (!window.__pdOpen && !ending) { clearInterval(watchId); clearInterval(pollId); if (R.started && R.started[key]) paused(key); else { armed = null; intro(); } } }, 400);
     pollId = setInterval(() => { const live = g.live(); if (current && current.round === key && live > 0) current.send(live); }, 2000);
   }
 
