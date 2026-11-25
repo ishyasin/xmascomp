@@ -43,7 +43,7 @@
   // Header row for the enabled rounds.
   function renderBoardHead(tr, rounds) {
     tr.textContent = "";
-    const cells = [["Rank", ""], ["Name or team", ""]].concat(rounds.map(r => [ROUNDS[r].short || ROUNDS[r].name, "num"]), [["Total", "num"]]);
+    const cells = [["Rank", ""], ["Name", ""]].concat(rounds.map(r => [ROUNDS[r].short || ROUNDS[r].name, "num"]), [["Total", "num"]]);
     cells.forEach(([t, cls]) => { const th = document.createElement("th"); th.scope = "col"; th.textContent = t; if (cls) th.className = cls; tr.appendChild(th); });
   }
 

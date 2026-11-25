@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Admin – The Pharmacy Christmas Competition 2026</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="edg" href="index.html" aria-label="Back to the homepage">
+      <span class="mark">ED<span class="amp">&amp;</span>G<span class="tm">™</span></span>
+      <span class="name">Evolve Digital &amp; Governance</span>
+      <span class="rule"><span></span><span></span><span></span></span>
+    </a>
+    <div class="admin-bar" id="who" hidden>
+      <span>Signed in as <strong id="whoEmail" style="color:#fff"></strong></span>
+      <button class="btn ghost small" type="button" id="signOut">Sign out</button>
+    </div>
+  </div>
+</header>
+
+<main class="admin-wrap" id="main">
+
+  <!-- Sign in -->
+  <form class="box admin-login" id="login" novalidate>
+    <h1 style="margin:0;font-size:28px;color:#fff">Admin sign in</h1>
+    <p>For the competition organiser only.</p>
+    <div class="field"><label for="lEmail">Email</label><input id="lEmail" type="email" autocomplete="username" required></div>
+    <div class="field"><label for="lPass">Password</label><input id="lPass" type="password" autocomplete="current-password" required></div>
+    <p class="msg" id="lMsg" role="alert"></p>
+    <button class="btn" type="submit" id="lBtn">Sign in</button>
+  </form>
+
+  <!-- Admin app -->
+  <div id="app" hidden>
+    <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px">
+      <h1 style="margin:0;font-size:30px;color:#fff" id="appTitle">Competition admin</h1>
+    </div>
+
+    <!-- Quick controls: open/close and access code -->
+    <section class="box quick" aria-label="Quick controls">
+      <div class="quick-row">
+        <div class="quick-state">
+          <span class="lbl">The competition is</span>
+          <strong id="qState">…</strong>
+          <span class="hint" id="qWhen"></span>
+        </div>
+        <button class="btn big" type="button" id="toggleBtn" disabled>…</button>
+      </div>
+      <form class="quick-row" id="codeForm" novalidate>
+        <div class="field" style="flex:1 1 320px">
+          <label for="fCode">Access code to get into the games</label>
+          <div class="inline">
+            <input id="fCode" class="code" type="text" maxlength="40" autocomplete="off" spellcheck="false" required aria-describedby="codeHint">
+            <button class="btn ghost small" type="button" id="genCode">Generate</button>
+            <button class="btn small" type="submit" id="codeBtn">Set code</button>
+          </div>
+          <span class="hint" id="codeHint">Players type this on the homepage. 3 to 40 characters, not case-sensitive. Changing it doesn't affect anyone already playing.</span>
+        </div>
+      </form>
+      <p class="okmsg" id="qOk" role="status"></p>
+      <p class="msg" id="qMsg" role="alert"></p>
+    </section>
+    <div class="tabs" role="tablist" aria-label="Admin sections">
+      <button role="tab" id="tEvent" aria-controls="pEvent" aria-selected="true" type="button">Event</button>
+      <button role="tab" id="tEntries" aria-controls="pEntries" aria-selected="false" type="button" tabindex="-1">Entries and scores</button>
+      <button role="tab" id="tLog" aria-controls="pLog" aria-selected="false" type="button" tabindex="-1">Activity log</button>
+    </div>
+
+    <!-- Event -->
+    <section id="pEvent" role="tabpanel" aria-labelledby="tEvent">
+      <form id="evForm" novalidate>
+        <div class="grid2">
+          <div class="box">
+            <h2>Schedule</h2>
+            <div class="field"><label for="fName">Event name</label><input id="fName" type="text" maxlength="80" required></div>
+            <div class="field"><label for="fStart">Opens</label><input id="fStart" type="datetime-local" required><span class="hint">The homepage counts down to this time. Entries open at this time.</span></div>
+            <div class="field"><label for="fEnd">Closes</label><input id="fEnd" type="datetime-local" required><span class="hint">No new entries after this. Keep it within 24 hours of opening so the same email can't enter twice.</span></div>
+          </div>
+          <div class="box">
+            <h2>Competitions</h2>
+            <p>Tick the ones to run. Use the arrows to set the order.</p>
+            <ul class="comp-list" id="comps"></ul>
+            <div class="field"><label for="fMins">Minutes per round</label><input id="fMins" type="number" min="1" max="15" step="1" required style="max-width:140px"><span class="hint" id="totalHint"></span></div>
+          </div>
+        </div>
+        <div class="inline" style="margin-top:18px;align-items:center">
+          <button class="btn" type="submit" id="saveBtn">Save changes</button>
+          <span class="okmsg" id="evOk" role="status"></span>
+        </div>
+        <p class="msg" id="evMsg" role="alert"></p>
+      </form>
+    </section>
+
+    <!-- Entries -->
+    <section id="pEntries" role="tabpanel" aria-labelledby="tEntries" hidden>
+      <div class="stats">
+        <div><span>Entries</span><strong id="sAll">0</strong></div>
+        <div><span>Finished</span><strong id="sDone">0</strong></div>
+        <div><span>In progress or abandoned</span><strong id="sLive">0</strong></div>
+        <div><span>Emails still held</span><strong id="sEmail">0</strong></div>
+      </div>
+      <div class="toolbar">
+        <label for="search" class="sr-only">Search entries</label>
+        <input id="search" type="search" placeholder="Search by name or email">
+        <button class="btn ghost small" type="button" id="refresh">Refresh</button>
+        <button class="btn ghost small" type="button" id="csv">Export CSV</button>
+      </div>
+      <div class="board">
+        <table id="entries">
+          <caption class="sr-only">All entries</caption>
+          <thead><tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Entered</th><th scope="col" class="num">Flight</th><th scope="col" class="num">Grotto</th><th scope="col" class="num">Quiz</th><th scope="col" class="num">Total</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+        </table>
+      </div>
+      <p class="msg" id="enMsg" role="alert"></p>
+      <div class="box danger" style="margin-top:28px">
+        <h3>Delete all entries</h3>
+        <p>Use this to clear test entries before the event, or everything afterwards. This can't be undone.</p>
+        <form class="inline" id="wipeForm" novalidate>
+          <label for="wipeTxt" class="sr-only">Type DELETE to confirm</label>
+          <input id="wipeTxt" type="text" placeholder="Type DELETE" autocomplete="off" style="max-width:220px">
+          <button class="btn bad small" type="submit">Delete all entries</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Log -->
+    <section id="pLog" role="tabpanel" aria-labelledby="tLog" hidden>
+      <div class="box"><h2>Recent admin changes</h2><ul class="log" id="log"></ul></div>
+    </section>
+  </div>
+
+  <!-- Edit entry -->
+  <dialog id="edit" aria-labelledby="edTitle">
+    <form method="dialog" id="edForm" novalidate>
+      <h2 id="edTitle">Edit entry</h2>
+      <div class="field"><label for="eName">Name</label><input id="eName" type="text" maxlength="40" required></div>
+      <div class="grid2" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+        <div class="field"><label for="eFlight">Flight</label><input id="eFlight" type="number" min="0" step="1"></div>
+        <div class="field"><label for="eGrotto">Grotto</label><input id="eGrotto" type="number" min="0" step="1"></div>
+        <div class="field"><label for="eQuiz">Quiz</label><input id="eQuiz" type="number" min="0" step="1"></div>
+      </div>
+      <label style="display:flex;gap:10px;align-items:center;font-weight:600"><input id="eHidden" type="checkbox" style="width:20px;height:20px;accent-color:#12a0ad"> Hide from the leaderboard</label>
+      <p class="msg" id="eMsg" role="alert"></p>
+      <div class="inline"><button class="btn" type="submit" value="save" id="eSave">Save</button><button class="btn ghost" type="button" id="eCancel">Cancel</button></div>
+    </form>
+  </dialog>
+</main>
+
+<script src="vendor/supabase-js-2.45.4.min.js"></script>
+<script src="config.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const C = window.XMAS_CONFIG || {};
+  const NAMES = { flight: "Reindeer Flight", grotto: "Grotto Dash", quiz: "The Christmas Quiz" };
+  const db = window.supabase.createClient(C.SUPABASE_URL, C.SUPABASE_ANON_KEY, { auth: { persistSession: true, storageKey: "xmasAdminAuth", autoRefreshToken: true } });
+  let settings = null, comps = [], entries = [], editing = null;
+
+  async function rpc(name, args) {
+    let res;
+    try { res = await db.rpc(name, args || {}); } catch (e) { throw new Error("Can't reach the server. Check your connection."); }
+    if (res.error) throw new Error(res.error.message || "Something went wrong");
+    return res.data;
+  }
+  const fmt = t => t ? new Date(t).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+  const pad = n => String(n).padStart(2, "0");
+  const toInput = t => { const d = new Date(t); return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":" + pad(d.getMinutes()); };
+  const fromInput = v => v ? new Date(v).toISOString() : null;
+  const td = (text, cls) => { const c = document.createElement("td"); if (cls) c.className = cls; c.textContent = text; return c; };
+
+  // ---------- Sign in / out ----------
+  async function enter() {
+    let me;
+    try { me = await rpc("admin_whoami"); me = Array.isArray(me) ? me[0] : me; } catch (e) { me = null; }
+    if (!me || !me.is_admin) {
+      await db.auth.signOut();
+      $("lMsg").textContent = "This account isn't set up as an admin.";
+      $("login").hidden = false; $("app").hidden = true; $("who").hidden = true; return;
+    }
+    $("whoEmail").textContent = me.email || "";
+    $("login").hidden = true; $("app").hidden = false; $("who").hidden = false;
+    await loadSettings();
+  }
+  $("login").addEventListener("submit", async e => {
+    e.preventDefault();
+    $("lMsg").textContent = ""; $("lBtn").disabled = true;
+    const { error } = await db.auth.signInWithPassword({ email: $("lEmail").value.trim(), password: $("lPass").value });
+    $("lBtn").disabled = false;
+    if (error) { $("lMsg").textContent = /invalid/i.test(error.message) ? "Email or password not recognised." : error.message; return; }
+    $("lPass").value = "";
+    enter();
+  });
+  $("signOut").addEventListener("click", async () => { await db.auth.signOut(); location.reload(); });
+
+  // ---------- Tabs ----------
+  const tabs = [["tEvent", "pEvent"], ["tEntries", "pEntries"], ["tLog", "pLog"]];
+  function selectTab(id) {
+    tabs.forEach(([t, p]) => { const on = t === id; $(t).setAttribute("aria-selected", on); $(t).tabIndex = on ? 0 : -1; $(p).hidden = !on; });
+    if (id === "tEntries") loadEntries();
+    if (id === "tLog") loadLog();
+  }
+  tabs.forEach(([t], i) => {
+    $(t).addEventListener("click", () => selectTab(t));
+    $(t).addEventListener("keydown", e => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft") return;
+      const n = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length][0]; selectTab(n); $(n).focus();
+    });
+  });
+
+  // ---------- Event settings ----------
+  const isOpen = () => { const n = Date.now(); return settings && n >= new Date(settings.event_starts_at).getTime() && n < new Date(settings.event_ends_at).getTime(); };
+  function status() {
+    if (!settings) return;
+    const now = Date.now(), s = new Date(settings.event_starts_at).getTime(), e = new Date(settings.event_ends_at).getTime(), st = $("qState"), btn = $("toggleBtn");
+    if (now < s) { st.textContent = "Closed (counting down)"; st.className = "soon"; $("qWhen").textContent = "Opens automatically " + fmt(s) + ", closes " + fmt(e) + "."; }
+    else if (now < e) { st.textContent = "Open"; st.className = "open"; $("qWhen").textContent = "Players with the code can enter. Closes automatically " + fmt(e) + "."; }
+    else { st.textContent = "Closed"; st.className = "closed"; $("qWhen").textContent = "Closed " + fmt(e) + ". Nobody new can enter."; }
+    btn.disabled = false;
+    if (now >= s && now < e) { btn.textContent = "Close the competition"; btn.className = "btn big bad"; }
+    else { btn.textContent = "Open the competition"; btn.className = "btn big go"; }
+  }
+  function renderComps() {
+    const ul = $("comps"); ul.textContent = "";
+    comps.forEach((c, i) => {
+      const li = document.createElement("li"); if (!c.on) li.className = "off";
+      const n = document.createElement("span"); n.className = "n"; n.textContent = c.on ? String(comps.filter((x, j) => x.on && j <= i).length) : "–"; n.setAttribute("aria-hidden", "true");
+      const lab = document.createElement("label"); const cb = document.createElement("input"); cb.type = "checkbox"; cb.checked = c.on;
+      cb.addEventListener("change", () => { c.on = cb.checked; renderComps(); });
+      lab.append(cb, NAMES[c.key]);
+      const up = document.createElement("button"); up.type = "button"; up.className = "icon-btn"; up.textContent = "↑"; up.setAttribute("aria-label", "Move " + NAMES[c.key] + " up"); up.disabled = i === 0;
+      up.addEventListener("click", () => { [comps[i - 1], comps[i]] = [comps[i], comps[i - 1]]; renderComps(); ul.children[i - 1].querySelector("button").focus(); });
+      const dn = document.createElement("button"); dn.type = "button"; dn.className = "icon-btn"; dn.textContent = "↓"; dn.setAttribute("aria-label", "Move " + NAMES[c.key] + " down"); dn.disabled = i === comps.length - 1;
+      dn.addEventListener("click", () => { [comps[i + 1], comps[i]] = [comps[i], comps[i + 1]]; renderComps(); ul.children[i + 1].querySelectorAll("button")[1].focus(); });
+      li.append(n, lab, up, dn); ul.appendChild(li);
+    });
+    totalHint();
+  }
+  function totalHint() {
+    const n = comps.filter(c => c.on).length, m = Number($("fMins").value) || 0;
+    $("totalHint").textContent = n ? n + (n === 1 ? " round" : " rounds") + " × " + m + " min = " + (n * m) + " minutes in total" + (n * m > 15 ? " (over the 15-minute target)" : "") : "Tick at least one competition.";
+  }
+  $("fMins").addEventListener("input", totalHint);
+  function fill(s) {
+    settings = s;
+    $("fName").value = s.event_name; $("fStart").value = toInput(s.event_starts_at); $("fEnd").value = toInput(s.event_ends_at);
+    $("fCode").value = s.access_code; $("fMins").value = Math.round(s.round_seconds / 60);
+    const on = s.rounds || [];
+    comps = on.map(k => ({ key: k, on: true })).concat(["flight", "grotto", "quiz"].filter(k => !on.includes(k)).map(k => ({ key: k, on: false })));
+    renderComps(); status();
+  }
+  async function loadSettings() {
+    try { const r = await rpc("admin_get_settings"); fill(Array.isArray(r) ? r[0] : r); } catch (e) { $("evMsg").textContent = e.message; }
+  }
+  async function save(overrides, okText) {
+    $("evMsg").textContent = ""; $("evOk").textContent = ""; $("saveBtn").disabled = true;
+    const args = Object.assign({
+      p_event_name: $("fName").value.trim(), p_starts_at: fromInput($("fStart").value), p_ends_at: fromInput($("fEnd").value),
+      p_access_code: $("fCode").value.trim(), p_rounds: comps.filter(c => c.on).map(c => c.key), p_round_seconds: Math.round((Number($("fMins").value) || 0) * 60)
+    }, overrides || {});
+    try { const r = await rpc("admin_save_settings", args); fill(Array.isArray(r) ? r[0] : r); $("evOk").textContent = okText || "Saved."; }
+    catch (e) { $("evMsg").textContent = e.message; }
+    $("saveBtn").disabled = false;
+  }
+  $("evForm").addEventListener("submit", e => { e.preventDefault(); save(); });
+  // Quick controls save only what they change; everything else stays as last saved.
+  async function quickSave(overrides, okText) {
+    $("qMsg").textContent = ""; $("qOk").textContent = ""; $("toggleBtn").disabled = true; $("codeBtn").disabled = true;
+    const args = Object.assign({
+      p_event_name: settings.event_name, p_starts_at: settings.event_starts_at, p_ends_at: settings.event_ends_at,
+      p_access_code: settings.access_code, p_rounds: settings.rounds, p_round_seconds: settings.round_seconds
+    }, overrides);
+    try { const r = await rpc("admin_save_settings", args); fill(Array.isArray(r) ? r[0] : r); $("qOk").textContent = okText; }
+    catch (e) { $("qMsg").textContent = e.message; status(); }
+    $("codeBtn").disabled = false;
+  }
+  $("toggleBtn").addEventListener("click", () => {
+    const now = new Date();
+    if (isOpen()) {
+      if (!confirm("Close the competition now? Nobody new can enter. Anyone already playing can finish.")) return;
+      const start = new Date(settings.event_starts_at);
+      quickSave({ p_starts_at: (start < now ? start : new Date(now.getTime() - 60e3)).toISOString(), p_ends_at: now.toISOString() }, "Closed. The homepage now says the competition has finished.");
+    } else {
+      const end = new Date(settings.event_ends_at), newEnd = end > now ? end : new Date(now.getTime() + 24 * 3600e3);
+      if (!confirm("Open the competition now? Anyone with the access code (" + settings.access_code + ") can enter until " + fmt(newEnd) + ".")) return;
+      quickSave({ p_starts_at: now.toISOString(), p_ends_at: newEnd.toISOString() }, "Open. Players can enter now with the access code.");
+    }
+  });
+  $("codeForm").addEventListener("submit", e => {
+    e.preventDefault();
+    const c = $("fCode").value.trim();
+    if (c === settings.access_code) { $("qOk").textContent = "That is already the code."; return; }
+    quickSave({ p_access_code: c }, "Access code set to " + c + ".");
+  });
+  $("genCode").addEventListener("click", () => {
+    const words = ["SLEIGH", "TINSEL", "HOLLY", "SNOW", "ELF", "STAR", "BAUBLE", "CRACKER", "MISTLETOE", "REINDEER"];
+    const a = new Uint32Array(2); crypto.getRandomValues(a);
+    $("fCode").value = words[a[0] % words.length] + "-" + String(1000 + (a[1] % 9000));
+    $("qMsg").textContent = ""; $("qOk").textContent = "New code generated. Press Set code to use it.";
+  });
+  setInterval(status, 30000);
+
+  // ---------- Entries ----------
+  function stats() {
+    $("sAll").textContent = entries.length;
+    $("sDone").textContent = entries.filter(e => e.finished_at).length;
+    $("sLive").textContent = entries.filter(e => !e.finished_at).length;
+    $("sEmail").textContent = entries.filter(e => e.email).length;
+  }
+  function renderEntries() {
+    const q = $("search").value.trim().toLowerCase(), tb = $("entries").tBodies[0]; tb.textContent = "";
+    const rows = entries.filter(e => !q || (e.player_name || "").toLowerCase().includes(q) || (e.email || "").toLowerCase().includes(q));
+    if (!rows.length) { const tr = document.createElement("tr"), c = td(entries.length ? "No entries match your search." : "No entries yet.", "empty"); c.colSpan = 9; tr.appendChild(c); tb.appendChild(tr); return; }
+    rows.forEach(e => {
+      const tr = document.createElement("tr"); if (e.hidden) tr.className = "is-hidden";
+      const name = td(e.player_name);
+      if (e.hidden) { const s = document.createElement("span"); s.className = "sub"; s.textContent = "Hidden from leaderboard"; name.appendChild(s); }
+      const mail = td(e.email || "Deleted after 24 h"); if (!e.email) mail.style.color = "#a9b6cc";
+      const when = td(fmt(e.started_at)); const st = document.createElement("span"); st.className = "sub"; st.textContent = e.finished_at ? "Finished" : "Not finished"; when.appendChild(st);
+      const acts = document.createElement("td"); acts.className = "acts";
+      const b = (label, cls, fn, aria) => { const x = document.createElement("button"); x.type = "button"; x.textContent = label; if (cls) x.className = cls; x.setAttribute("aria-label", aria); x.addEventListener("click", fn); return x; };
+      acts.append(
+        b("Edit", "", () => openEdit(e), "Edit " + e.player_name),
+        b(e.hidden ? "Show" : "Hide", "", () => update(e, { p_hidden: !e.hidden }), (e.hidden ? "Show " : "Hide ") + e.player_name),
+        b("Delete", "del", () => del(e), "Delete " + e.player_name));
+      tr.append(td(String(entries.indexOf(e) + 1), "pos"), name, mail, when,
+        td(e.flight_score.toLocaleString("en-GB"), "num"), td(e.grotto_score.toLocaleString("en-GB"), "num"), td(e.quiz_score.toLocaleString("en-GB"), "num"), td(e.total.toLocaleString("en-GB"), "num tot"), acts);
+      tb.appendChild(tr);
+    });
+  }
+  async function loadEntries() {
+    $("enMsg").textContent = "";
+    try { entries = await rpc("admin_list_entries") || []; stats(); renderEntries(); } catch (e) { $("enMsg").textContent = e.message; }
+  }
+  $("search").addEventListener("input", renderEntries);
+  $("refresh").addEventListener("click", loadEntries);
+  async function update(e, changes) {
+    const a = Object.assign({ p_id: e.id, p_name: e.player_name, p_flight: e.flight_score, p_grotto: e.grotto_score, p_quiz: e.quiz_score, p_hidden: e.hidden }, changes);
+    try { await rpc("admin_update_entry", a); await loadEntries(); return true; } catch (err) { $("enMsg").textContent = err.message; return err; }
+  }
+  async function del(e) {
+    if (!confirm("Delete the entry for " + e.player_name + "? This can't be undone.")) return;
+    try { await rpc("admin_delete_entry", { p_id: e.id }); await loadEntries(); } catch (err) { $("enMsg").textContent = err.message; }
+  }
+  function openEdit(e) {
+    editing = e; $("eMsg").textContent = "";
+    $("eName").value = e.player_name; $("eFlight").value = e.flight_score; $("eGrotto").value = e.grotto_score; $("eQuiz").value = e.quiz_score; $("eHidden").checked = e.hidden;
+    $("edit").showModal(); $("eName").focus();
+  }
+  $("eCancel").addEventListener("click", () => $("edit").close());
+  $("edForm").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    const n = v => Math.max(0, Math.floor(Number(v) || 0));
+    const r = await update(editing, { p_name: $("eName").value, p_flight: n($("eFlight").value), p_grotto: n($("eGrotto").value), p_quiz: n($("eQuiz").value), p_hidden: $("eHidden").checked });
+    if (r === true) $("edit").close(); else $("eMsg").textContent = r.message;
+  });
+  $("wipeForm").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    if ($("wipeTxt").value !== "DELETE") { $("enMsg").textContent = "Type DELETE in capitals to confirm."; return; }
+    try { const n = await rpc("admin_delete_all_entries", { p_confirm: "DELETE" }); $("wipeTxt").value = ""; await loadEntries(); $("enMsg").textContent = ""; alert(n + " entries deleted."); }
+    catch (e) { $("enMsg").textContent = e.message; }
+  });
+  $("csv").addEventListener("click", () => {
+    const safe = v => { let s = v == null ? "" : String(v); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
+    const head = ["Rank", "Name", "Email", "Entered", "Finished", "Reindeer Flight", "Grotto Dash", "Quiz", "Quiz correct", "Quiz answered", "Total", "Hidden"];
+    const lines = [head.map(safe).join(",")].concat(entries.map((e, i) => [i + 1, e.player_name, e.email || "", e.started_at, e.finished_at || "", e.flight_score, e.grotto_score, e.quiz_score, e.quiz_correct, e.quiz_answered, e.total, e.hidden ? "Yes" : "No"].map(safe).join(",")));
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv" }));
+    a.download = "competition-entries-" + new Date().toISOString().slice(0, 10) + ".csv"; document.body.appendChild(a); a.click(); a.remove();
+  });
+
+  // ---------- Log ----------
+  const LABEL = { settings_saved: "Event settings saved", entry_updated: "Entry edited", entry_deleted: "Entry deleted", all_entries_deleted: "All entries deleted" };
+  async function loadLog() {
+    const ul = $("log"); ul.textContent = "";
+    let rows; try { rows = await rpc("admin_get_log", { p_limit: 100 }); } catch (e) { const li = document.createElement("li"); li.textContent = e.message; ul.appendChild(li); return; }
+    if (!rows.length) { const li = document.createElement("li"); li.textContent = "No changes yet."; ul.appendChild(li); return; }
+    rows.forEach(r => {
+      const li = document.createElement("li"), t = document.createElement("time"), s = document.createElement("strong"), d = r.detail || {};
+      t.textContent = fmt(r.at) + " · " + (r.admin || ""); s.textContent = LABEL[r.action] || r.action;
+      let extra = "";
+      if (r.action === "settings_saved") extra = "Opens " + fmt(d.starts_at) + ", closes " + fmt(d.ends_at) + ", " + (d.rounds || []).map(k => NAMES[k] || k).join(" → ") + (d.access_code_changed ? ", access code changed" : "");
+      if (r.action === "entry_updated" && d.before && d.after) extra = d.before.name + (d.before.name !== d.after.name ? " → " + d.after.name : "") + (d.before.hidden !== d.after.hidden ? (d.after.hidden ? ", hidden" : ", shown") : "") + ((d.before.flight !== d.after.flight || d.before.grotto !== d.after.grotto || d.before.quiz !== d.after.quiz) ? ", scores changed" : "");
+      if (r.action === "entry_deleted") extra = d.name + " (total " + d.total + ")";
+      if (r.action === "all_entries_deleted") extra = d.count + " entries";
+      li.append(t, s, extra ? ": " + extra : ""); ul.appendChild(li);
+    });
+  }
+
+  // ---------- Start ----------
+  (async () => {
+    if (!C.SUPABASE_URL || /YOUR-/.test(C.SUPABASE_URL)) { $("lMsg").textContent = "The site is not connected to Supabase yet (see config.js)."; return; }
+    const { data } = await db.auth.getSession();
+    if (data && data.session) enter();
+  })();
+})();
+</script>
+</body>
+</html>

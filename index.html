@@ -30,9 +30,9 @@
     <div class="snow" id="snow" aria-hidden="true"></div>
     <div class="wrap">
       <div class="copy">
-        
+        <span class="eyebrow">West Sussex</span>
         <h1 id="eventName">The Pharmacy Christmas Competition 2026</h1>
-        <p class="lead">A festive challenge for the pharmacy team. What you'll be doing stays under wraps until you start. <span id="leadTime">Start to finish in 15 minutes.</span></p>
+        <p class="lead">A festive challenge for everyone in pharmacy, played on your own. What you'll be doing stays under wraps until you start. <span id="leadTime">Start to finish in 15 minutes.</span></p>
 
         <!-- Loading / not connected -->
         <div class="gate" id="gLoading" aria-live="polite"><p id="loadMsg">Loading the event…</p></div>
@@ -72,8 +72,8 @@
         <form class="gate" id="gEnter" hidden novalidate>
           <p class="ok-line">Code accepted</p>
           <div class="field">
-            <label for="player">Your name or team name</label>
-            <input id="player" type="text" maxlength="40" autocomplete="nickname" required>
+            <label for="player">Your name</label>
+            <input id="player" type="text" maxlength="40" autocomplete="name" required>
             <span class="hint">Shown on the leaderboard.</span>
           </div>
           <div class="field">
@@ -127,7 +127,7 @@
     <div class="board">
       <table id="board" class="compact">
         <caption class="sr-only">Top 20 scores</caption>
-        <thead><tr><th scope="col">Rank</th><th scope="col">Name or team</th><th scope="col" class="num">Total</th></tr></thead>
+        <thead><tr><th scope="col">Rank</th><th scope="col">Name</th><th scope="col" class="num">Total</th></tr></thead>
         <tbody><tr><td colspan="3" class="empty">Loading scores…</td></tr></tbody>
       </table>
     </div>
@@ -147,7 +147,7 @@
       <a href="https://home.edandg.com/">home.edandg.com</a>
       <a href="privacy.html">Privacy notice</a>
     </div>
-    <small>© 2026 ED&amp;G™</small>
+    <small>© 2026 ED&amp;G™ · <a class="admin-link" href="admin.html">Admin login</a></small>
   </div>
 </footer>
 
@@ -230,7 +230,7 @@
   $("gEnter").addEventListener("submit", async e => {
     e.preventDefault();
     const name = $("player").value.replace(/\s+/g, " ").trim(), email = $("email").value.trim();
-    if (!name) { $("enterMsg").textContent = "Enter a name or team name."; $("player").focus(); return; }
+    if (!name) { $("enterMsg").textContent = "Enter your name."; $("player").focus(); return; }
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $("enterMsg").textContent = "Enter a valid email address."; $("email").focus(); return; }
     $("enterBtn").disabled = true; $("enterMsg").textContent = "";
     try {
