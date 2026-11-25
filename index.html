@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Pharmacy Christmas Competition 2026 – ED&amp;G™</title>
-<meta name="description" content="Festive games and a quiz set across West Sussex. 15 minutes, start to finish.">
+<meta name="description" content="A festive pharmacy competition. 15 minutes, start to finish.">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="site.css">
 </head>
@@ -19,7 +19,6 @@
       <span class="rule"><span></span><span></span><span></span></span>
     </a>
     <nav class="nav" aria-label="Main">
-      <a href="#how">How it works</a>
       <a href="#leaderboard">Leaderboard</a>
       <a class="btn small" href="#start">Enter</a>
     </nav>
@@ -33,7 +32,7 @@
       <div class="copy">
         <span class="eyebrow">West Sussex</span>
         <h1 id="eventName">The Pharmacy Christmas Competition 2026</h1>
-        <p class="lead">Festive games and a quiz, all set across West Sussex. Fly Santa's sleigh along the coast, sort the presents in the grotto, then test what you know. <span id="leadTime">Start to finish in 15 minutes.</span></p>
+        <p class="lead">A festive challenge for the pharmacy team. What you'll be doing stays under wraps until you start. <span id="leadTime">Start to finish in 15 minutes.</span></p>
 
         <!-- Loading / not connected -->
         <div class="gate" id="gLoading" aria-live="polite"><p id="loadMsg">Loading the event…</p></div>
@@ -98,48 +97,26 @@
           <p>Thank you for playing. The final leaderboard is below.</p>
         </div>
       </div>
-      <figure>
-        <img src="assets/hero-sleigh.jpg" alt="Santa's sleigh and reindeer flying over the sea at night beside a snowy seafront" width="1100" height="740">
-        <figcaption>Reindeer Flight over Worthing seafront</figcaption>
+      <figure class="gift" aria-hidden="true">
+        <svg viewBox="0 0 400 340" width="100%" role="presentation">
+          <g fill="#ffffff" opacity=".7"><circle cx="46" cy="58" r="3"/><circle cx="352" cy="40" r="2.5"/><circle cx="318" cy="120" r="2"/><circle cx="70" cy="170" r="2"/><circle cx="370" cy="210" r="3"/><circle cx="24" cy="262" r="2.5"/></g>
+          <g stroke="#e8b830" stroke-width="3" stroke-linecap="round"><path d="M330 72v16M322 80h16"/><path d="M60 110v12M54 116h12"/></g>
+          <rect x="84" y="150" width="232" height="160" rx="10" fill="#12a0ad"/>
+          <rect x="84" y="150" width="232" height="160" rx="10" fill="#0e8792" opacity=".35"/>
+          <rect x="70" y="118" width="260" height="46" rx="10" fill="#5fd4de"/>
+          <rect x="185" y="118" width="30" height="192" fill="#e8b830"/>
+          <rect x="70" y="132" width="260" height="0" fill="none"/>
+          <path d="M200 118c-26-44-74-46-78-20-4 22 40 26 78 20z" fill="#e8b830"/>
+          <path d="M200 118c26-44 74-46 78-20 4 22-40 26-78 20z" fill="#e8b830"/>
+          <path d="M200 118c-18-26-50-30-54-16" fill="none" stroke="#b88a10" stroke-width="3"/>
+          <path d="M200 118c18-26 50-30 54-16" fill="none" stroke="#b88a10" stroke-width="3"/>
+          <circle cx="200" cy="118" r="11" fill="#c99a1c"/>
+          <path d="M268 164l34 52" stroke="#e8edf7" stroke-width="2"/>
+          <g transform="rotate(-12 300 236)"><rect x="268" y="210" width="68" height="54" rx="8" fill="#ffffff"/><circle cx="280" cy="222" r="4" fill="#1a2744"/><text x="304" y="252" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-size="38" font-weight="800" fill="#1a2744">?</text></g>
+        </svg>
       </figure>
     </div>
     <div class="rule" aria-hidden="true"><span></span><span></span><span></span></div>
-  </section>
-
-  <section class="wrap section" id="how">
-    <div>
-      <h2 id="howTitle">How it works</h2>
-      <p class="intro" id="howIntro">Each round is timed. Your scores are added up for the leaderboard.</p>
-    </div>
-    <div class="cards">
-      <article class="card" data-round="flight">
-        <img src="assets/round-flight.jpg" alt="Reindeer Flight game screen" width="1098" height="686" loading="lazy">
-        <div class="body">
-          <span class="tag"></span>
-          <h3>Reindeer Flight</h3>
-          <p>Fly Santa's sleigh along the West Sussex coast at night. Collect presents, fly through the wreaths and stay above the waves.</p>
-        </div>
-      </article>
-      <article class="card" data-round="grotto">
-        <img src="assets/round-grotto.jpg" alt="Grotto Dash game screen" width="1098" height="686" loading="lazy">
-        <div class="body">
-          <span class="tag"></span>
-          <h3>Grotto Dash</h3>
-          <p>Gift tags come down the belt. Send each one to the right sleigh sack: Chichester &amp; West, Worthing &amp; Coast, or Horsham &amp; North.</p>
-        </div>
-      </article>
-      <article class="card" data-round="quiz">
-        <div class="tiles" aria-hidden="true">
-          <span style="color:#12a0ad">Q1</span><span style="color:#4caf50">Q2</span><span style="color:#e8b830">Q3</span>
-          <span style="color:#7fd3da">Q4</span><span style="color:#e8b830">Q5</span><span style="color:#12a0ad">?</span>
-        </div>
-        <div class="body">
-          <span class="tag"></span>
-          <h3>The Christmas Quiz</h3>
-          <p>Questions about West Sussex at Christmas. Answer as many as you can before the time runs out.</p>
-        </div>
-      </article>
-    </div>
   </section>
 
   <section class="wrap section" id="leaderboard" style="padding-bottom:88px">
@@ -148,7 +125,7 @@
       <p class="intro">Top 20 scores.</p>
     </div>
     <div class="board">
-      <table id="board">
+      <table id="board" class="compact">
         <caption class="sr-only">Top 20 scores</caption>
         <thead><tr><th scope="col">Rank</th><th scope="col">Name or team</th><th scope="col" class="num">Total</th></tr></thead>
         <tbody><tr><td colspan="3" class="empty">Loading scores…</td></tr></tbody>
@@ -197,17 +174,11 @@
   }
 
   function applyRounds() {
-    const n = ev.rounds.length, mins = Math.max(1, Math.round(ev.roundSeconds * n / 60)), per = Math.max(1, Math.round(ev.roundSeconds / 60));
+    const n = ev.rounds.length, mins = Math.max(1, Math.round(ev.roundSeconds * n / 60));
     const m = x => x + (x === 1 ? " minute" : " minutes");
     $("leadTime").textContent = "Start to finish in " + m(mins) + ".";
-    $("howTitle").textContent = (n === 1 ? "One round, " : n + " rounds, ") + m(mins);
-    $("howIntro").textContent = n === 1 ? "Your score goes on the leaderboard." : "Each round lasts " + m(per) + ". Your scores are added up for the leaderboard.";
-    document.querySelectorAll(".card[data-round]").forEach(c => {
-      const i = ev.rounds.indexOf(c.dataset.round);
-      c.hidden = i < 0;
-      if (i >= 0) { c.style.order = i; c.querySelector(".tag").textContent = "Round " + (i + 1) + " · " + m(per); }
-    });
-    XQ.loadBoard($("board"), $("boardMsg"), ev.rounds);
+    // The homepage keeps the competitions secret: the leaderboard shows totals only.
+    XQ.loadBoard($("board"), $("boardMsg"), []);
   }
 
   const pad = n => String(n).padStart(2, "0");
@@ -222,7 +193,7 @@
     } else if (now < ev.endsAt) {
       if (!$("gSoon").hidden || !$("gLoading").hidden) { show("gCode"); }
     } else {
-      if ($("gDone").hidden) { show("gDone"); XQ.loadBoard($("board"), $("boardMsg"), ev.rounds); }
+      if ($("gDone").hidden) { show("gDone"); XQ.loadBoard($("board"), $("boardMsg"), []); }
       clearInterval(tick);
     }
   }
@@ -232,8 +203,8 @@
       ev = await XQ.getEvent();
     } catch (e) {
       $("loadMsg").textContent = e.message;
-      XQ.renderBoardHead($("board").tHead.rows[0], ["flight", "grotto", "quiz"]);
-      XQ.renderBoard($("board").tBodies[0], [], ["flight", "grotto", "quiz"]);
+      XQ.renderBoardHead($("board").tHead.rows[0], []);
+      XQ.renderBoard($("board").tBodies[0], [], []);
       return;
     }
     if (ev.name) { $("eventName").textContent = ev.name; document.title = ev.name + " – ED&G™"; }
