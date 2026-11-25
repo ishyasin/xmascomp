@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Pharmacy Christmas Competition 2026 – ED&amp;G™</title>
+<meta name="description" content="Festive games and a quiz set across West Sussex. 15 minutes, start to finish.">
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="top">
+  <div class="wrap">
+    <a class="edg" href="https://home.edandg.com/" aria-label="ED&amp;G™ home">
+      <span class="mark">ED<span class="amp">&amp;</span>G<span class="tm">™</span></span>
+      <span class="name">Evolve Digital &amp; Governance</span>
+      <span class="rule"><span></span><span></span><span></span></span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#leaderboard">Leaderboard</a>
+      <a class="btn small" href="#start">Enter</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+  <section class="hero" id="start">
+    <div class="snow" id="snow" aria-hidden="true"></div>
+    <div class="wrap">
+      <div class="copy">
+        <span class="eyebrow">West Sussex</span>
+        <h1 id="eventName">The Pharmacy Christmas Competition 2026</h1>
+        <p class="lead">Festive games and a quiz, all set across West Sussex. Fly Santa's sleigh along the coast, sort the presents in the grotto, then test what you know. <span id="leadTime">Start to finish in 15 minutes.</span></p>
+
+        <!-- Loading / not connected -->
+        <div class="gate" id="gLoading" aria-live="polite"><p id="loadMsg">Loading the event…</p></div>
+
+        <!-- Before the event: countdown -->
+        <div class="gate" id="gSoon" hidden>
+          <h2>The event starts in</h2>
+          <div class="count" role="timer" aria-live="off" aria-label="Time until the event starts">
+            <div><strong id="cD">0</strong><span>Days</span></div>
+            <div><strong id="cH">00</strong><span>Hours</span></div>
+            <div><strong id="cM">00</strong><span>Minutes</span></div>
+            <div><strong id="cS">00</strong><span>Seconds</span></div>
+          </div>
+          <p id="startsText"></p>
+          <div class="field">
+            <label for="codeSoon">Access code</label>
+            <input id="codeSoon" class="code" type="text" disabled aria-describedby="codeSoonHint">
+            <span class="hint" id="codeSoonHint">You can enter the code when the countdown reaches zero.</span>
+          </div>
+        </div>
+
+        <!-- Event open: access code -->
+        <form class="gate" id="gCode" hidden novalidate>
+          <h2>The event is open</h2>
+          <div class="field">
+            <label for="code">Access code</label>
+            <div class="inline">
+              <input id="code" class="code" type="text" maxlength="40" autocomplete="off" autocapitalize="characters" spellcheck="false" required aria-describedby="codeMsg">
+              <button class="btn" type="submit" id="codeBtn">Continue</button>
+            </div>
+          </div>
+          <p class="msg" id="codeMsg" role="alert"></p>
+          <p id="closesText"></p>
+        </form>
+
+        <!-- Code accepted: name and email -->
+        <form class="gate" id="gEnter" hidden novalidate>
+          <p class="ok-line">Code accepted</p>
+          <div class="field">
+            <label for="player">Your name or team name</label>
+            <input id="player" type="text" maxlength="40" autocomplete="nickname" required>
+            <span class="hint">Shown on the leaderboard.</span>
+          </div>
+          <div class="field">
+            <label for="email">Email address</label>
+            <input id="email" type="email" maxlength="254" autocomplete="email" required aria-describedby="emailNotice">
+          </div>
+          <div class="notice" id="emailNotice">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8b830" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <span>We only use your email to make sure each person enters once. It is never shown on the leaderboard and is <strong>deleted 24 hours after you enter</strong>. <a href="privacy.html">Privacy notice</a></span>
+          </div>
+          <p class="msg" id="enterMsg" role="alert"></p>
+          <div class="inline">
+            <button class="btn" type="submit" id="enterBtn">Start the challenge</button>
+          </div>
+          <p class="hint" style="margin:0;font-size:13px;color:#a9b6cc">Once you start, the clock runs. You can only enter once.</p>
+        </form>
+
+        <!-- After the event -->
+        <div class="gate" id="gDone" hidden>
+          <h2>This year's event has finished</h2>
+          <p>Thank you for playing. The final leaderboard is below.</p>
+        </div>
+      </div>
+      <figure>
+        <img src="assets/hero-sleigh.jpg" alt="Santa's sleigh and reindeer flying over the sea at night beside a snowy seafront" width="1100" height="740">
+        <figcaption>Reindeer Flight over Worthing seafront</figcaption>
+      </figure>
+    </div>
+    <div class="rule" aria-hidden="true"><span></span><span></span><span></span></div>
+  </section>
+
+  <section class="wrap section" id="how">
+    <div>
+      <h2 id="howTitle">How it works</h2>
+      <p class="intro" id="howIntro">Each round is timed. Your scores are added up for the leaderboard.</p>
+    </div>
+    <div class="cards">
+      <article class="card" data-round="flight">
+        <img src="assets/round-flight.jpg" alt="Reindeer Flight game screen" width="1098" height="686" loading="lazy">
+        <div class="body">
+          <span class="tag"></span>
+          <h3>Reindeer Flight</h3>
+          <p>Fly Santa's sleigh along the West Sussex coast at night. Collect presents, fly through the wreaths and stay above the waves.</p>
+        </div>
+      </article>
+      <article class="card" data-round="grotto">
+        <img src="assets/round-grotto.jpg" alt="Grotto Dash game screen" width="1098" height="686" loading="lazy">
+        <div class="body">
+          <span class="tag"></span>
+          <h3>Grotto Dash</h3>
+          <p>Gift tags come down the belt. Send each one to the right sleigh sack: Chichester &amp; West, Worthing &amp; Coast, or Horsham &amp; North.</p>
+        </div>
+      </article>
+      <article class="card" data-round="quiz">
+        <div class="tiles" aria-hidden="true">
+          <span style="color:#12a0ad">Q1</span><span style="color:#4caf50">Q2</span><span style="color:#e8b830">Q3</span>
+          <span style="color:#7fd3da">Q4</span><span style="color:#e8b830">Q5</span><span style="color:#12a0ad">?</span>
+        </div>
+        <div class="body">
+          <span class="tag"></span>
+          <h3>The Christmas Quiz</h3>
+          <p>Questions about West Sussex at Christmas. Answer as many as you can before the time runs out.</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="wrap section" id="leaderboard" style="padding-bottom:88px">
+    <div>
+      <h2>Leaderboard</h2>
+      <p class="intro">Top 20 scores.</p>
+    </div>
+    <div class="board">
+      <table id="board">
+        <caption class="sr-only">Top 20 scores</caption>
+        <thead><tr><th scope="col">Rank</th><th scope="col">Name or team</th><th scope="col" class="num">Total</th></tr></thead>
+        <tbody><tr><td colspan="3" class="empty">Loading scores…</td></tr></tbody>
+      </table>
+    </div>
+    <p class="msg" id="boardMsg" role="status"></p>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <a class="edg" href="https://home.edandg.com/" aria-label="ED&amp;G™ home">
+      <span class="mark">ED<span class="amp">&amp;</span>G<span class="tm">™</span></span>
+      <span class="name">Evolve Digital &amp; Governance</span>
+      <span class="rule"><span></span><span></span><span></span></span>
+    </a>
+    <div class="links">
+      <a href="mailto:support@edandg.com">support@edandg.com</a>
+      <a href="https://home.edandg.com/">home.edandg.com</a>
+      <a href="privacy.html">Privacy notice</a>
+    </div>
+    <small>© 2026 ED&amp;G™</small>
+  </div>
+</footer>
+
+<script src="vendor/supabase-js-2.45.4.min.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const gates = ["gLoading", "gSoon", "gCode", "gEnter", "gDone"];
+  const show = id => gates.forEach(g => { $(g).hidden = g !== id; });
+  let ev = null, code = "", tick = null;
+
+  XQ.snow($("snow"), 46);
+
+  // A player already part-way through goes straight back to the game.
+  const existing = XQ.run.get();
+  if (existing && existing.id && !existing.finished) {
+    const p = document.createElement("p");
+    const a = document.createElement("a"); a.href = "play.html"; a.textContent = "Carry on with your entry";
+    p.append("You have an entry in progress. ", a);
+    p.className = "notice"; $("gLoading").parentNode.insertBefore(p, $("gLoading"));
+  }
+
+  function applyRounds() {
+    const n = ev.rounds.length, mins = Math.max(1, Math.round(ev.roundSeconds * n / 60)), per = Math.max(1, Math.round(ev.roundSeconds / 60));
+    const m = x => x + (x === 1 ? " minute" : " minutes");
+    $("leadTime").textContent = "Start to finish in " + m(mins) + ".";
+    $("howTitle").textContent = (n === 1 ? "One round, " : n + " rounds, ") + m(mins);
+    $("howIntro").textContent = n === 1 ? "Your score goes on the leaderboard." : "Each round lasts " + m(per) + ". Your scores are added up for the leaderboard.";
+    document.querySelectorAll(".card[data-round]").forEach(c => {
+      const i = ev.rounds.indexOf(c.dataset.round);
+      c.hidden = i < 0;
+      if (i >= 0) { c.style.order = i; c.querySelector(".tag").textContent = "Round " + (i + 1) + " · " + m(per); }
+    });
+    XQ.loadBoard($("board"), $("boardMsg"), ev.rounds);
+  }
+
+  const pad = n => String(n).padStart(2, "0");
+  function update() {
+    const now = ev.now();
+    if (now < ev.startsAt) {
+      if ($("gSoon").hidden) show("gSoon");
+      let s = Math.max(0, Math.floor((ev.startsAt - now) / 1000));
+      $("cD").textContent = Math.floor(s / 86400); s %= 86400;
+      $("cH").textContent = pad(Math.floor(s / 3600)); s %= 3600;
+      $("cM").textContent = pad(Math.floor(s / 60)); $("cS").textContent = pad(s % 60);
+    } else if (now < ev.endsAt) {
+      if (!$("gSoon").hidden || !$("gLoading").hidden) { show("gCode"); }
+    } else {
+      if ($("gDone").hidden) { show("gDone"); XQ.loadBoard($("board"), $("boardMsg"), ev.rounds); }
+      clearInterval(tick);
+    }
+  }
+
+  async function init() {
+    try {
+      ev = await XQ.getEvent();
+    } catch (e) {
+      $("loadMsg").textContent = e.message;
+      XQ.renderBoardHead($("board").tHead.rows[0], ["flight", "grotto", "quiz"]);
+      XQ.renderBoard($("board").tBodies[0], [], ["flight", "grotto", "quiz"]);
+      return;
+    }
+    if (ev.name) { $("eventName").textContent = ev.name; document.title = ev.name + " – ED&G™"; }
+    $("startsText").textContent = "Opens " + XQ.fmtDate(ev.startsAt) + ".";
+    $("closesText").textContent = "Entries close " + XQ.fmtDate(ev.endsAt) + ".";
+    applyRounds();
+    update();
+    tick = setInterval(update, 1000);
+  }
+
+  $("gCode").addEventListener("submit", async e => {
+    e.preventDefault();
+    const v = $("code").value.trim();
+    if (!v) { $("codeMsg").textContent = "Enter the access code."; $("code").focus(); return; }
+    $("codeBtn").disabled = true; $("codeMsg").textContent = "";
+    try {
+      if (await XQ.rpc("check_code", { p_code: v })) { code = v; show("gEnter"); $("player").focus(); }
+      else { $("codeMsg").textContent = "That code is not right. Check it and try again."; $("code").select(); }
+    } catch (err) { $("codeMsg").textContent = err.message; }
+    $("codeBtn").disabled = false;
+  });
+
+  $("gEnter").addEventListener("submit", async e => {
+    e.preventDefault();
+    const name = $("player").value.replace(/\s+/g, " ").trim(), email = $("email").value.trim();
+    if (!name) { $("enterMsg").textContent = "Enter a name or team name."; $("player").focus(); return; }
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $("enterMsg").textContent = "Enter a valid email address."; $("email").focus(); return; }
+    $("enterBtn").disabled = true; $("enterMsg").textContent = "";
+    try {
+      const rows = await XQ.rpc("start_run", { p_code: code, p_name: name, p_email: email });
+      const r = Array.isArray(rows) ? rows[0] : rows;
+      XQ.run.set({ id: r.run_id, token: r.token, name, step: 0, best: {} });
+      location.href = "play.html";
+    } catch (err) { $("enterMsg").textContent = err.message; $("enterBtn").disabled = false; }
+  });
+
+  init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Play – The Pharmacy Christmas Competition 2026</title>
+<link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="site.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <a class="edg" href="index.html" aria-label="Back to the homepage">
+      <span class="mark">ED<span class="amp">&amp;</span>G<span class="tm">™</span></span>
+      <span class="name">Evolve Digital &amp; Governance</span>
+      <span class="rule"><span></span><span></span><span></span></span>
+    </a>
+    <span id="who" style="font-weight:700"></span>
+  </div>
+</header>
+
+<div class="timer hidden" id="timer" role="timer" aria-live="off"><span class="lbl" id="timerLbl">Time left</span><span id="timerVal">5:00</span></div>
+
+<main class="stage" id="main">
+  <section class="panel" id="panel" aria-live="polite">
+    <p>Loading…</p>
+  </section>
+</main>
+
+<script src="vendor/supabase-js-2.45.4.min.js"></script>
+<script src="config.js"></script>
+<script src="common.js"></script>
+<script>
+(function () {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const panel = $("panel");
+  const GAME = {
+    flight: { file: "games/reindeer-flight.js", global: "XmasSleigh", live: () => (window.__xmasLive ? window.__xmasLive() : 0),
+      how: ["Steer with the mouse, a finger, the arrow keys or WASD.", "Hold Space (or press and hold) to boost.", "Collect presents and fly through the wreaths. Watch out for the waves.", "Fly as many times as you like. Your best flight counts."] },
+    grotto: { file: "games/grotto-dash.js", global: "XmasGrotto", live: () => (window.XmasGrotto && window.XmasGrotto.live ? window.XmasGrotto.live() : 0),
+      how: ["Gift tags come along the belt.", "Press ← for Chichester & West, ↓ for Worthing & Coast, → for Horsham & North (or tap the sacks).", "Three wrong sacks ends a game.", "Play as many times as you like. Your best game counts."] },
+    quiz: { how: ["Pick one answer for each question.", "Your first answer is the one that counts.", "Answer as many as you can before the time runs out."] }
+  };
+
+  let R = XQ.run.get(), ev = null, timerId = null, watchId = null, deadline = 0, ending = false;
+  if (!R || !R.id) { location.replace("index.html"); return; }
+  $("who").textContent = R.name || "";
+  const save = () => XQ.run.set(R);
+
+  // ---- Helpers to build panels safely (no user text through innerHTML) ----
+  function el(tag, attrs, ...kids) {
+    const e = document.createElement(tag);
+    Object.entries(attrs || {}).forEach(([k, v]) => { if (k === "class") e.className = v; else if (k.startsWith("on")) e.addEventListener(k.slice(2), v); else if (v !== false && v != null) e.setAttribute(k, v); });
+    kids.flat().forEach(k => e.append(k && k.nodeType ? k : String(k == null ? "" : k)));
+    return e;
+  }
+  function render(...kids) { panel.textContent = ""; kids.flat().forEach(k => k && panel.appendChild(k)); const h = panel.querySelector("h1"); if (h) { h.tabIndex = -1; h.focus(); } }
+  function steps() { return el("ol", { class: "steps", "aria-label": "Progress" }, ev.rounds.map((r, i) => el("li", { class: i < R.step ? "done" : i === R.step ? "now" : "", "aria-label": XQ.ROUNDS[r].name + (i < R.step ? ", done" : i === R.step ? ", now" : "") }))); }
+  function errorPanel(msg) { render(el("h1", {}, "Something went wrong"), el("p", {}, msg), el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: () => location.reload() }, "Try again"), el("a", { class: "btn ghost", href: "index.html" }, "Homepage"))); }
+
+  // ---- Timer ----
+  const fmt = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+  function startTimer(onEnd) {
+    $("timer").classList.remove("hidden");
+    clearInterval(timerId);
+    const step = () => {
+      const left = deadline - ev.now();
+      $("timerVal").textContent = fmt(left);
+      $("timer").classList.toggle("warn", left <= 30000);
+      if (left <= 0) { clearInterval(timerId); onEnd(); }
+    };
+    step(); timerId = setInterval(step, 250);
+  }
+  function stopTimer() { clearInterval(timerId); $("timer").classList.add("hidden"); }
+  function roundDeadline() {
+    if (!R.deadline || R.deadlineStep !== R.step) { R.deadline = ev.now() + ev.roundSeconds * 1000; R.deadlineStep = R.step; save(); }
+    return R.deadline;
+  }
+
+  // ---- Scores from the games: they call sb.rpc(...); this forwards them to Supabase ----
+  async function submitScore(round, score) {
+    score = Math.max(0, Math.floor(Number(score) || 0));
+    R.best = R.best || {};
+    if (score <= (R.best[round] || 0)) return;
+    R.best[round] = score; save();
+    try { const best = await XQ.rpc("submit_round", { p_run: R.id, p_token: R.token, p_round: round, p_score: score }); if (typeof best === "number") { R.best[round] = best; save(); } }
+    catch (e) { console.warn("Score not saved:", e.message); }
+  }
+  window.sb = {
+    rpc(name, args) {
+      if (name === "submit_coast_score") submitScore("flight", args && args.p_score);
+      else if (name === "submit_dash_score") submitScore("grotto", args && args.p_score);
+      return Promise.resolve({ data: [], error: null });
+    }
+  };
+
+  function loadScript(src) {
+    return new Promise((ok, fail) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = () => fail(new Error("Could not load " + src)); document.head.appendChild(s); });
+  }
+
+  // ---- Round screens ----
+  function intro() {
+    stopTimer();
+    if (R.step >= ev.rounds.length) return finish();
+    const key = ev.rounds[R.step], info = XQ.ROUNDS[key], mins = Math.max(1, Math.round(ev.roundSeconds / 60)), resumed = R.deadline && R.deadlineStep === R.step;
+    render(
+      steps(),
+      el("p", { class: "eyebrow" }, "Round " + (R.step + 1) + " of " + ev.rounds.length),
+      el("h1", {}, info.name),
+      el("p", {}, resumed ? "Your clock for this round is still running." : "You have " + mins + (mins === 1 ? " minute" : " minutes") + ". The clock starts when you press the button."),
+      el("ul", { class: "howto" }, GAME[key].how.map(t => el("li", {}, t))),
+      el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: () => key === "quiz" ? quiz() : game(key) }, resumed ? "Back to " + info.name : "Start " + info.name))
+    );
+  }
+
+  async function game(key) {
+    const g = GAME[key];
+    try { if (!window[g.global]) await loadScript(g.file); } catch (e) { return errorPanel(e.message); }
+    deadline = roundDeadline(); ending = false;
+    if (deadline - ev.now() <= 0) return roundOver(key);
+    window[g.global].open();
+    startTimer(() => roundOver(key));
+    clearInterval(watchId);
+    watchId = setInterval(() => { if (!window.__pdOpen && !ending) { clearInterval(watchId); paused(key); } }, 400);
+  }
+
+  function paused(key) {
+    const info = XQ.ROUNDS[key];
+    render(steps(), el("h1", {}, info.name + " is paused"), el("p", {}, "The clock is still running. Go back to keep playing, or finish the round now with your best score so far."),
+      el("div", { class: "scores" }, el("div", {}, el("span", {}, "Best score this round"), el("strong", {}, (R.best && R.best[key] || 0).toLocaleString("en-GB")))),
+      el("div", { class: "actions" },
+        el("button", { class: "btn", type: "button", onclick: () => game(key) }, "Back to the game"),
+        el("button", { class: "btn ghost", type: "button", onclick: () => roundOver(key) }, "Finish this round")));
+  }
+
+  async function roundOver(key) {
+    if (ending) return; ending = true;
+    clearInterval(watchId); stopTimer();
+    const g = GAME[key];
+    if (g.global) {
+      const live = g.live(); if (live > 0) await submitScore(key, live);   // a flight or game still in progress counts
+      try { if (window[g.global] && window.__pdOpen) window[g.global].close(); } catch (e) {}
+      window.__pdOpen = false;
+    }
+    const info = XQ.ROUNDS[key], last = R.step === ev.rounds.length - 1;
+    R.step += 1; R.deadline = 0; save();
+    render(steps(), el("h1", {}, "Time's up: " + info.name),
+      el("div", { class: "scores" }, el("div", { class: "big" }, el("span", {}, "Your best score"), el("strong", {}, (R.best && R.best[key] || 0).toLocaleString("en-GB")))),
+      el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: intro }, last ? "See your results" : "Next round")));
+  }
+
+  // ---- Quiz ----
+  async function quiz() {
+    deadline = roundDeadline(); ending = false;
+    if (deadline - ev.now() <= 0) return quizOver();
+    let qs;
+    try { qs = await XQ.rpc("get_quiz", { p_run: R.id, p_token: R.token }); } catch (e) { return errorPanel(e.message); }
+    if (!qs || !qs.length) {
+      R.step += 1; R.deadline = 0; save();
+      return render(steps(), el("h1", {}, "The Christmas Quiz"), el("p", {}, "No quiz questions have been added yet, so this round is skipped."), el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: intro }, "Continue")));
+    }
+    R.answered = R.answered || {}; save();
+    startTimer(quizOver);
+    let i = qs.findIndex(q => !(q.id in R.answered)); if (i < 0) return quizOver();
+    const show = () => {
+      if (ending) return;
+      const q = qs[i], fb = el("p", { class: "feedback", role: "status" }), next = el("div", { class: "actions" });
+      const opts = q.options.map((o, k) => el("button", { class: "opt", type: "button", onclick: () => answer(k) }, o));
+      async function answer(k) {
+        opts.forEach(b => { b.disabled = true; });
+        try {
+          const res = await XQ.rpc("submit_quiz_answer", { p_run: R.id, p_token: R.token, p_question: q.id, p_choice: k });
+          const a = Array.isArray(res) ? res[0] : res;
+          R.answered[q.id] = !!a.correct; save();
+          opts[a.correct_index] && opts[a.correct_index].classList.add("right");
+          if (!a.correct) opts[k].classList.add("wrong");
+          fb.className = "feedback " + (a.correct ? "ok" : "no");
+          fb.textContent = a.correct ? "Correct!" : "Not quite. The answer was: " + q.options[a.correct_index];
+        } catch (e) { fb.className = "feedback no"; fb.textContent = e.message; opts.forEach(b => { b.disabled = false; }); return; }
+        i = qs.findIndex(x => !(x.id in R.answered));
+        const btn = el("button", { class: "btn", type: "button", onclick: () => (i < 0 ? quizOver() : show()) }, i < 0 ? "Finish the quiz" : "Next question");
+        next.appendChild(btn); btn.focus();
+      }
+      const done = Object.keys(R.answered).length;
+      render(steps(), el("div", { class: "qhead" }, el("span", {}, "Question " + (done + 1) + " of " + qs.length), el("span", {}, q.points + " points")),
+        el("h1", { class: "qtext" }, q.question), el("div", { class: "opts" }, opts), fb, next);
+    };
+    show();
+  }
+
+  async function quizOver() {
+    if (ending) return; ending = true; stopTimer();
+    const right = Object.values(R.answered || {}).filter(Boolean).length, total = Object.keys(R.answered || {}).length;
+    const last = R.step === ev.rounds.length - 1;
+    R.step += 1; R.deadline = 0; save();
+    render(steps(), el("h1", {}, "Quiz complete"),
+      el("div", { class: "scores" }, el("div", { class: "big" }, el("span", {}, "Correct answers"), el("strong", {}, right + " of " + total))),
+      el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: intro }, last ? "See your results" : "Next round")));
+  }
+
+  // ---- Results ----
+  async function finish() {
+    stopTimer();
+    let res;
+    try { const rows = await XQ.rpc("finish_run", { p_run: R.id, p_token: R.token }); res = Array.isArray(rows) ? rows[0] : rows; }
+    catch (e) { return errorPanel(e.message); }
+    R.finished = true; save();
+    const boxes = ev.rounds.map(k => el("div", {}, el("span", {}, XQ.ROUNDS[k].name), el("strong", {}, (res[XQ.ROUNDS[k].col] || 0).toLocaleString("en-GB"))));
+    boxes.push(el("div", { class: "big" }, el("span", {}, "Total"), el("strong", {}, (res.total || 0).toLocaleString("en-GB"))));
+    const table = el("table", {}, el("caption", { class: "sr-only" }, "Top 20 scores"), el("thead", {}, el("tr")), el("tbody"));
+    render(el("p", { class: "eyebrow" }, "All done"), el("h1", {}, "Well played, " + (R.name || "you") + "!"),
+      el("p", {}, "You are number " + res.place + " on the leaderboard."),
+      el("div", { class: "scores" }, boxes),
+      el("div", { class: "board" }, table),
+      el("div", { class: "actions" }, el("a", { class: "btn", href: "index.html#leaderboard" }, "Back to the homepage")));
+    XQ.loadBoard(table, null, ev.rounds, R.name);
+  }
+
+  // ---- Start ----
+  (async function init() {
+    try { ev = await XQ.getEvent(); } catch (e) { return errorPanel(e.message); }
+    if (R.finished || R.step >= ev.rounds.length) return finish();
+    intro();
+  })();
+})();
+</script>
+</body>
+</html>
