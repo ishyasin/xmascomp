@@ -30,7 +30,6 @@
     <div class="snow" id="snow" aria-hidden="true"></div>
     <div class="wrap">
       <div class="copy">
-        <span class="eyebrow">West Sussex</span>
         <h1 id="eventName">The Pharmacy Christmas Competition 2026</h1>
         <p class="lead">A festive challenge for everyone in pharmacy, played on your own. What you'll be doing stays under wraps until you start. <span id="leadTime">Start to finish in 15 minutes.</span></p>
 
@@ -77,8 +76,8 @@
             <span class="hint">Shown on the leaderboard.</span>
           </div>
           <div class="field">
-            <label for="email">Email address</label>
-            <input id="email" type="email" maxlength="254" autocomplete="email" required aria-describedby="emailNotice">
+            <label for="email">Your @nhs.net email address</label>
+            <input id="email" type="email" maxlength="254" autocomplete="email" placeholder="firstname.lastname@nhs.net" required aria-describedby="emailNotice">
           </div>
           <div class="notice" id="emailNotice">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#e8b830" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
@@ -231,7 +230,7 @@
     e.preventDefault();
     const name = $("player").value.replace(/\s+/g, " ").trim(), email = $("email").value.trim();
     if (!name) { $("enterMsg").textContent = "Enter your name."; $("player").focus(); return; }
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { $("enterMsg").textContent = "Enter a valid email address."; $("email").focus(); return; }
+    if (!/^[a-z0-9][a-z0-9._'-]*@nhs\.net$/i.test(email)) { $("enterMsg").textContent = "Enter your @nhs.net email address."; $("email").focus(); return; }
     $("enterBtn").disabled = true; $("enterMsg").textContent = "";
     try {
       const rows = await XQ.rpc("start_run", { p_code: code, p_name: name, p_email: email });

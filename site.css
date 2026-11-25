@@ -221,3 +221,5 @@ dialog h2 { margin: 0; font-size: 22px; color: var(--white); }
 .btn.go { background: #2e7d32; } .btn.go:hover { background: #256628; }
 .quick + .okmsg:empty, .quick .okmsg:empty, .quick .msg:empty { display: none; }
 .box p.okmsg { color: var(--good); font-weight: 600; } .box p.msg { color: var(--bad); }
+.flag-btn { min-height: 34px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--gold); background: rgba(232,184,48,.12); color: var(--gold); font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.flag-btn:hover { background: rgba(232,184,48,.22); }

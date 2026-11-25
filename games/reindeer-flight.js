@@ -522,7 +522,7 @@ function build() {
       if (o.position.z - (u.D || 0) / 2 > 14) { scene.remove(o); things.splice(i, 1); continue; }
       if (!run) continue;
       const dx = o.position.x - px, dy = o.position.y - py, dz = Math.abs(o.position.z);
-      if (u.kind === "ring") { if (dz < 1.2 && !u.done) { u.done = true; if (Math.hypot(dx, dy) < 2.4) { combo++; bonus = (bonus || 0) + 10 + combo * 5; mRing.emissiveIntensity = 3; setTimeout(() => mRing.emissiveIntensity = 1.3, 150); AU.ring(combo); scene.remove(o); things.splice(i, 1); } else { combo = 0; AU.miss(); } } }
+      if (u.kind === "ring") { if (dz < 1.2 && !u.done) { u.done = true; if (Math.hypot(dx, dy) < 2.4) { combo++; bonus = (bonus || 0) + 10 + Math.min(combo, 10) * 5; mRing.emissiveIntensity = 3; setTimeout(() => mRing.emissiveIntensity = 1.3, 150); AU.ring(combo); scene.remove(o); things.splice(i, 1); } else { combo = 0; AU.miss(); } } }
       else if (u.kind === "gold") { if (dz < 1.4 && !u.done) { u.done = true; if (Math.hypot(dx, dy) < 3.3) { startTrick(); scene.remove(o); things.splice(i, 1); } } }
       else if (u.kind === "cap") { if (dz < 1.4 && Math.hypot(dx, dy) < 1.8) { boost = Math.min(1, boost + .4); bonus = (bonus || 0) + 15; AU.cap(); scene.remove(o); things.splice(i, 1); } }
       else if (u.kind === "heart") { if (dz < 1.4 && Math.hypot(dx, dy) < 1.8) { hearts = Math.min(3, hearts + 1); heartsTxt(); AU.heart(); scene.remove(o); things.splice(i, 1); } }
@@ -551,7 +551,7 @@ function build() {
     renderer.render(scene, cam);
   }
   window.__xmasLive = () => (running && alive ? score : 0);
-  $("go").onclick = () => { AU.init(); bonus = 0; reset(); running = true; ov.hidden = true; };
+  $("go").onclick = () => { AU.init(); bonus = 0; reset(); running = true; ov.hidden = true; try { window.__xmasGameStart && window.__xmasGameStart("flight"); } catch (e) {} };
   loadBoard();
   reset(); last = performance.now(); raf = requestAnimationFrame(frame);
   return function close() {

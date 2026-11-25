@@ -103,6 +103,7 @@
         <div><span>Finished</span><strong id="sDone">0</strong></div>
         <div><span>In progress or abandoned</span><strong id="sLive">0</strong></div>
         <div><span>Emails still held</span><strong id="sEmail">0</strong></div>
+        <div><span>Entries with refused scores</span><strong id="sFlag">0</strong></div>
       </div>
       <div class="toolbar">
         <label for="search" class="sr-only">Search entries</label>
@@ -113,8 +114,8 @@
       <div class="board">
         <table id="entries">
           <caption class="sr-only">All entries</caption>
-          <thead><tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Entered</th><th scope="col" class="num">Flight</th><th scope="col" class="num">Grotto</th><th scope="col" class="num">Quiz</th><th scope="col" class="num">Total</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
-          <tbody><tr><td colspan="9" class="empty">Loading…</td></tr></tbody>
+          <thead><tr><th scope="col">#</th><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Entered</th><th scope="col" class="num">Flight</th><th scope="col" class="num">Grotto</th><th scope="col" class="num">Quiz</th><th scope="col" class="num">Total</th><th scope="col">Flags</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead>
+          <tbody><tr><td colspan="10" class="empty">Loading…</td></tr></tbody>
         </table>
       </div>
       <p class="msg" id="enMsg" role="alert"></p>
@@ -135,16 +136,22 @@
     </section>
   </div>
 
+  <!-- Flags for an entry -->
+  <dialog id="flagsDlg" aria-labelledby="fgTitle">
+    <form method="dialog" novalidate>
+      <h2 id="fgTitle">Refused scores</h2>
+      <p style="margin:0;font-size:14px;color:#c9d3e6" id="fgWho"></p>
+      <ul class="log" id="fgList"></ul>
+      <div class="inline"><button class="btn" type="submit">Close</button></div>
+    </form>
+  </dialog>
+
   <!-- Edit entry -->
   <dialog id="edit" aria-labelledby="edTitle">
     <form method="dialog" id="edForm" novalidate>
-      <h2 id="edTitle">Edit entry</h2>
+      <h2 id="edTitle">Edit name or visibility</h2>
       <div class="field"><label for="eName">Name</label><input id="eName" type="text" maxlength="40" required></div>
-      <div class="grid2" style="grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
-        <div class="field"><label for="eFlight">Flight</label><input id="eFlight" type="number" min="0" step="1"></div>
-        <div class="field"><label for="eGrotto">Grotto</label><input id="eGrotto" type="number" min="0" step="1"></div>
-        <div class="field"><label for="eQuiz">Quiz</label><input id="eQuiz" type="number" min="0" step="1"></div>
-      </div>
+      <p style="margin:0;font-size:14px;color:#c9d3e6">Scores can't be changed. They are set only by the server during play.</p>
       <label style="display:flex;gap:10px;align-items:center;font-weight:600"><input id="eHidden" type="checkbox" style="width:20px;height:20px;accent-color:#12a0ad"> Hide from the leaderboard</label>
       <p class="msg" id="eMsg" role="alert"></p>
       <div class="inline"><button class="btn" type="submit" value="save" id="eSave">Save</button><button class="btn ghost" type="button" id="eCancel">Cancel</button></div>
@@ -312,11 +319,12 @@
     $("sDone").textContent = entries.filter(e => e.finished_at).length;
     $("sLive").textContent = entries.filter(e => !e.finished_at).length;
     $("sEmail").textContent = entries.filter(e => e.email).length;
+    $("sFlag").textContent = entries.filter(e => Number(e.flags) > 0).length;
   }
   function renderEntries() {
     const q = $("search").value.trim().toLowerCase(), tb = $("entries").tBodies[0]; tb.textContent = "";
     const rows = entries.filter(e => !q || (e.player_name || "").toLowerCase().includes(q) || (e.email || "").toLowerCase().includes(q));
-    if (!rows.length) { const tr = document.createElement("tr"), c = td(entries.length ? "No entries match your search." : "No entries yet.", "empty"); c.colSpan = 9; tr.appendChild(c); tb.appendChild(tr); return; }
+    if (!rows.length) { const tr = document.createElement("tr"), c = td(entries.length ? "No entries match your search." : "No entries yet.", "empty"); c.colSpan = 10; tr.appendChild(c); tb.appendChild(tr); return; }
     rows.forEach(e => {
       const tr = document.createElement("tr"); if (e.hidden) tr.className = "is-hidden";
       const name = td(e.player_name);
@@ -329,8 +337,11 @@
         b("Edit", "", () => openEdit(e), "Edit " + e.player_name),
         b(e.hidden ? "Show" : "Hide", "", () => update(e, { p_hidden: !e.hidden }), (e.hidden ? "Show " : "Hide ") + e.player_name),
         b("Delete", "del", () => del(e), "Delete " + e.player_name));
+      const fl = document.createElement("td"), nf = Number(e.flags) || 0;
+      if (nf) { const fb = document.createElement("button"); fb.type = "button"; fb.className = "flag-btn"; fb.textContent = nf + (nf === 1 ? " flag" : " flags"); fb.setAttribute("aria-label", "Show " + nf + " refused scores for " + e.player_name); fb.addEventListener("click", () => showFlags(e)); fl.appendChild(fb); }
+      else { fl.textContent = "None"; fl.style.color = "#a9b6cc"; }
       tr.append(td(String(entries.indexOf(e) + 1), "pos"), name, mail, when,
-        td(e.flight_score.toLocaleString("en-GB"), "num"), td(e.grotto_score.toLocaleString("en-GB"), "num"), td(e.quiz_score.toLocaleString("en-GB"), "num"), td(e.total.toLocaleString("en-GB"), "num tot"), acts);
+        td(e.flight_score.toLocaleString("en-GB"), "num"), td(e.grotto_score.toLocaleString("en-GB"), "num"), td(e.quiz_score.toLocaleString("en-GB"), "num"), td(e.total.toLocaleString("en-GB"), "num tot"), fl, acts);
       tb.appendChild(tr);
     });
   }
@@ -341,23 +352,33 @@
   $("search").addEventListener("input", renderEntries);
   $("refresh").addEventListener("click", loadEntries);
   async function update(e, changes) {
-    const a = Object.assign({ p_id: e.id, p_name: e.player_name, p_flight: e.flight_score, p_grotto: e.grotto_score, p_quiz: e.quiz_score, p_hidden: e.hidden }, changes);
+    const a = Object.assign({ p_id: e.id, p_name: e.player_name, p_hidden: e.hidden }, changes);
     try { await rpc("admin_update_entry", a); await loadEntries(); return true; } catch (err) { $("enMsg").textContent = err.message; return err; }
   }
   async function del(e) {
     if (!confirm("Delete the entry for " + e.player_name + "? This can't be undone.")) return;
     try { await rpc("admin_delete_entry", { p_id: e.id }); await loadEntries(); } catch (err) { $("enMsg").textContent = err.message; }
   }
+  async function showFlags(e) {
+    $("fgWho").textContent = e.player_name + ". The server refused these scores because they were not possible in the time played. You can hide or delete the entry.";
+    const ul = $("fgList"); ul.textContent = "";
+    try {
+      const rows = await rpc("admin_entry_flags", { p_id: e.id });
+      rows.forEach(f => { const li = document.createElement("li"), t = document.createElement("time"), s = document.createElement("strong");
+        t.textContent = fmt(f.at) + " · " + (NAMES[f.round] || f.round); s.textContent = "Claimed " + Number(f.claimed).toLocaleString("en-GB");
+        li.append(t, s, ", allowed " + Number(f.allowed).toLocaleString("en-GB") + " (" + f.reason + ")"); ul.appendChild(li); });
+    } catch (err) { const li = document.createElement("li"); li.textContent = err.message; ul.appendChild(li); }
+    $("flagsDlg").showModal();
+  }
   function openEdit(e) {
     editing = e; $("eMsg").textContent = "";
-    $("eName").value = e.player_name; $("eFlight").value = e.flight_score; $("eGrotto").value = e.grotto_score; $("eQuiz").value = e.quiz_score; $("eHidden").checked = e.hidden;
+    $("eName").value = e.player_name; $("eHidden").checked = e.hidden;
     $("edit").showModal(); $("eName").focus();
   }
   $("eCancel").addEventListener("click", () => $("edit").close());
   $("edForm").addEventListener("submit", async ev => {
     ev.preventDefault();
-    const n = v => Math.max(0, Math.floor(Number(v) || 0));
-    const r = await update(editing, { p_name: $("eName").value, p_flight: n($("eFlight").value), p_grotto: n($("eGrotto").value), p_quiz: n($("eQuiz").value), p_hidden: $("eHidden").checked });
+    const r = await update(editing, { p_name: $("eName").value, p_hidden: $("eHidden").checked });
     if (r === true) $("edit").close(); else $("eMsg").textContent = r.message;
   });
   $("wipeForm").addEventListener("submit", async ev => {
@@ -368,8 +389,8 @@
   });
   $("csv").addEventListener("click", () => {
     const safe = v => { let s = v == null ? "" : String(v); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s; return '"' + s.replace(/"/g, '""') + '"'; };
-    const head = ["Rank", "Name", "Email", "Entered", "Finished", "Reindeer Flight", "Grotto Dash", "Quiz", "Quiz correct", "Quiz answered", "Total", "Hidden"];
-    const lines = [head.map(safe).join(",")].concat(entries.map((e, i) => [i + 1, e.player_name, e.email || "", e.started_at, e.finished_at || "", e.flight_score, e.grotto_score, e.quiz_score, e.quiz_correct, e.quiz_answered, e.total, e.hidden ? "Yes" : "No"].map(safe).join(",")));
+    const head = ["Rank", "Name", "Email", "Entered", "Finished", "Reindeer Flight", "Grotto Dash", "Quiz", "Quiz correct", "Quiz answered", "Total", "Hidden", "Refused scores"];
+    const lines = [head.map(safe).join(",")].concat(entries.map((e, i) => [i + 1, e.player_name, e.email || "", e.started_at, e.finished_at || "", e.flight_score, e.grotto_score, e.quiz_score, e.quiz_correct, e.quiz_answered, e.total, e.hidden ? "Yes" : "No", e.flags || 0].map(safe).join(",")));
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + lines.join("\r\n")], { type: "text/csv" }));
     a.download = "competition-entries-" + new Date().toISOString().slice(0, 10) + ".csv"; document.body.appendChild(a); a.click(); a.remove();
   });
@@ -385,7 +406,7 @@
       t.textContent = fmt(r.at) + " · " + (r.admin || ""); s.textContent = LABEL[r.action] || r.action;
       let extra = "";
       if (r.action === "settings_saved") extra = "Opens " + fmt(d.starts_at) + ", closes " + fmt(d.ends_at) + ", " + (d.rounds || []).map(k => NAMES[k] || k).join(" → ") + (d.access_code_changed ? ", access code changed" : "");
-      if (r.action === "entry_updated" && d.before && d.after) extra = d.before.name + (d.before.name !== d.after.name ? " → " + d.after.name : "") + (d.before.hidden !== d.after.hidden ? (d.after.hidden ? ", hidden" : ", shown") : "") + ((d.before.flight !== d.after.flight || d.before.grotto !== d.after.grotto || d.before.quiz !== d.after.quiz) ? ", scores changed" : "");
+      if (r.action === "entry_updated" && d.before && d.after) extra = d.before.name + (d.before.name !== d.after.name ? " → " + d.after.name : "") + (d.before.hidden !== d.after.hidden ? (d.after.hidden ? ", hidden" : ", shown") : "") + ((d.before.flight !== undefined && (d.before.flight !== d.after.flight || d.before.grotto !== d.after.grotto || d.before.quiz !== d.after.quiz)) ? ", scores changed" : "");
       if (r.action === "entry_deleted") extra = d.name + " (total " + d.total + ")";
       if (r.action === "all_entries_deleted") extra = d.count + " entries";
       li.append(t, s, extra ? ": " + extra : ""); ul.appendChild(li);

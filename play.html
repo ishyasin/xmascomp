@@ -35,18 +35,21 @@
   "use strict";
   const $ = id => document.getElementById(id);
   const panel = $("panel");
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
   const GAME = {
     flight: { file: "games/reindeer-flight.js", global: "XmasSleigh", live: () => (window.__xmasLive ? window.__xmasLive() : 0),
       how: ["Steer with the mouse, a finger, the arrow keys or WASD.", "Hold Space (or press and hold) to boost.", "Collect presents and fly through the wreaths. Watch out for the waves.", "Fly as many times as you like. Your best flight counts."] },
     grotto: { file: "games/grotto-dash.js", global: "XmasGrotto", live: () => (window.XmasGrotto && window.XmasGrotto.live ? window.XmasGrotto.live() : 0),
       how: ["Gift tags come along the belt.", "Press ← for Chichester & West, ↓ for Worthing & Coast, → for Horsham & North (or tap the sacks).", "Three wrong sacks ends a game.", "Play as many times as you like. Your best game counts."] },
-    quiz: { how: ["Pick one answer for each question.", "Your first answer is the one that counts.", "Answer as many as you can before the time runs out."] }
+    quiz: { how: ["One question at a time.", "Pick one answer. Your first answer is the one that counts.", "Answer as many as you can before the time runs out."] }
   };
 
-  let R = XQ.run.get(), ev = null, timerId = null, watchId = null, deadline = 0, ending = false;
+  let R = XQ.run.get(), ev = null, timerId = null, watchId = null, pollId = null, deadline = 0, ending = false;
   if (!R || !R.id) { location.replace("index.html"); return; }
+  R.best = R.best || {};
   $("who").textContent = R.name || "";
   const save = () => XQ.run.set(R);
+  const auth = () => ({ p_run: R.id, p_token: R.token });
 
   // ---- Helpers to build panels safely (no user text through innerHTML) ----
   function el(tag, attrs, ...kids) {
@@ -58,14 +61,15 @@
   function render(...kids) { panel.textContent = ""; kids.flat().forEach(k => k && panel.appendChild(k)); const h = panel.querySelector("h1"); if (h) { h.tabIndex = -1; h.focus(); } }
   function steps() { return el("ol", { class: "steps", "aria-label": "Progress" }, ev.rounds.map((r, i) => el("li", { class: i < R.step ? "done" : i === R.step ? "now" : "", "aria-label": XQ.ROUNDS[r].name + (i < R.step ? ", done" : i === R.step ? ", now" : "") }))); }
   function errorPanel(msg) { render(el("h1", {}, "Something went wrong"), el("p", {}, msg), el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: () => location.reload() }, "Try again"), el("a", { class: "btn ghost", href: "index.html" }, "Homepage"))); }
+  const best = k => (R.best[k] || 0).toLocaleString("en-GB");
 
-  // ---- Timer ----
+  // ---- Timer: the deadline comes from the server, not this device's clock ----
   const fmt = ms => { const s = Math.max(0, Math.ceil(ms / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
   function startTimer(onEnd) {
     $("timer").classList.remove("hidden");
     clearInterval(timerId);
     const step = () => {
-      const left = deadline - ev.now();
+      const left = deadline - performance.now();
       $("timerVal").textContent = fmt(left);
       $("timer").classList.toggle("warn", left <= 30000);
       if (left <= 0) { clearInterval(timerId); onEnd(); }
@@ -73,24 +77,47 @@
     step(); timerId = setInterval(step, 250);
   }
   function stopTimer() { clearInterval(timerId); $("timer").classList.add("hidden"); }
-  function roundDeadline() {
-    if (!R.deadline || R.deadlineStep !== R.step) { R.deadline = ev.now() + ev.roundSeconds * 1000; R.deadlineStep = R.step; save(); }
-    return R.deadline;
+  // Starts the round on the server (or picks up the same window if it already started).
+  async function beginRound(key) {
+    const rows = await XQ.rpc("start_round", Object.assign(auth(), { p_round: key }));
+    const s = Array.isArray(rows) ? rows[0] : rows;
+    deadline = performance.now() + (new Date(s.ends_at).getTime() - new Date(s.server_now).getTime());
+    R.started = R.started || {}; R.started[key] = true; save();
   }
 
-  // ---- Scores from the games: they call sb.rpc(...); this forwards them to Supabase ----
-  async function submitScore(round, score) {
-    score = Math.max(0, Math.floor(Number(score) || 0));
-    R.best = R.best || {};
-    if (score <= (R.best[round] || 0)) return;
-    R.best[round] = score; save();
-    try { const best = await XQ.rpc("submit_round", { p_run: R.id, p_token: R.token, p_round: round, p_score: score }); if (typeof best === "number") { R.best[round] = best; save(); } }
-    catch (e) { console.warn("Score not saved:", e.message); }
+  // ---- Score reporting: each attempt reports its score as it goes ----
+  let current = null;
+  function Reporter(round) {
+    const me = { round, playP: null, last: 0, lastAt: 0, pending: null, busy: null };
+    me.playP = XQ.rpc("start_game", Object.assign(auth(), { p_round: round })).catch(e => { console.warn("Game not registered:", e.message); return null; });
+    me.send = score => {
+      score = Math.max(0, Math.floor(Number(score) || 0));
+      if (score <= me.last) return me.busy || Promise.resolve();
+      me.pending = Math.max(me.pending || 0, score);
+      if (!me.busy) me.busy = (async () => {
+        while (me.pending != null) {
+          const wait = me.lastAt + 1150 - Date.now(); if (wait > 0) await sleep(wait);
+          const sc = me.pending; me.pending = null;
+          const id = await me.playP; if (!id || sc <= me.last) continue;
+          try {
+            const rows = await XQ.rpc("report_score", Object.assign(auth(), { p_play: id, p_score: sc }));
+            const r = Array.isArray(rows) ? rows[0] : rows;
+            if (r.accepted) me.last = sc;
+            if (typeof r.best === "number") { R.best[round] = r.best; save(); }
+          } catch (e) { console.warn("Score not saved:", e.message); }
+          me.lastAt = Date.now();
+        }
+        me.busy = null;
+      })();
+      return me.busy;
+    };
+    return me;
   }
+  window.__xmasGameStart = round => { current = Reporter(round); };
+  // The games call sb.rpc(...) when a game ends; that final score goes to the server here.
   window.sb = {
     rpc(name, args) {
-      if (name === "submit_coast_score") submitScore("flight", args && args.p_score);
-      else if (name === "submit_dash_score") submitScore("grotto", args && args.p_score);
+      if ((name === "submit_coast_score" || name === "submit_dash_score") && current) current.send(args && args.p_score);
       return Promise.resolve({ data: [], error: null });
     }
   };
@@ -103,123 +130,130 @@
   function intro() {
     stopTimer();
     if (R.step >= ev.rounds.length) return finish();
-    const key = ev.rounds[R.step], info = XQ.ROUNDS[key], mins = Math.max(1, Math.round(ev.roundSeconds / 60)), resumed = R.deadline && R.deadlineStep === R.step;
+    const key = ev.rounds[R.step], info = XQ.ROUNDS[key], mins = Math.max(1, Math.round(ev.roundSeconds / 60)), resumed = R.started && R.started[key];
     render(
       steps(),
       el("p", { class: "eyebrow" }, "Round " + (R.step + 1) + " of " + ev.rounds.length),
       el("h1", {}, info.name),
       el("p", {}, resumed ? "Your clock for this round is still running." : "You have " + mins + (mins === 1 ? " minute" : " minutes") + ". The clock starts when you press the button."),
       el("ul", { class: "howto" }, GAME[key].how.map(t => el("li", {}, t))),
-      el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: () => key === "quiz" ? quiz() : game(key) }, resumed ? "Back to " + info.name : "Start " + info.name))
+      el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: e => { e.target.disabled = true; key === "quiz" ? quiz() : game(key); } }, resumed ? "Back to " + info.name : "Start " + info.name))
     );
   }
 
   async function game(key) {
     const g = GAME[key];
-    try { if (!window[g.global]) await loadScript(g.file); } catch (e) { return errorPanel(e.message); }
-    deadline = roundDeadline(); ending = false;
-    if (deadline - ev.now() <= 0) return roundOver(key);
+    try { if (!window[g.global]) await loadScript(g.file); await beginRound(key); } catch (e) { return errorPanel(e.message); }
+    ending = false;
+    if (deadline - performance.now() <= 0) return roundOver(key);
     window[g.global].open();
     startTimer(() => roundOver(key));
-    clearInterval(watchId);
-    watchId = setInterval(() => { if (!window.__pdOpen && !ending) { clearInterval(watchId); paused(key); } }, 400);
+    clearInterval(watchId); clearInterval(pollId);
+    watchId = setInterval(() => { if (!window.__pdOpen && !ending) { clearInterval(watchId); clearInterval(pollId); paused(key); } }, 400);
+    pollId = setInterval(() => { const live = g.live(); if (current && current.round === key && live > 0) current.send(live); }, 2000);
   }
 
   function paused(key) {
     const info = XQ.ROUNDS[key];
     render(steps(), el("h1", {}, info.name + " is paused"), el("p", {}, "The clock is still running. Go back to keep playing, or finish the round now with your best score so far."),
-      el("div", { class: "scores" }, el("div", {}, el("span", {}, "Best score this round"), el("strong", {}, (R.best && R.best[key] || 0).toLocaleString("en-GB")))),
+      el("div", { class: "scores" }, el("div", {}, el("span", {}, "Best score this round"), el("strong", {}, best(key)))),
       el("div", { class: "actions" },
         el("button", { class: "btn", type: "button", onclick: () => game(key) }, "Back to the game"),
-        el("button", { class: "btn ghost", type: "button", onclick: () => roundOver(key) }, "Finish this round")));
+        el("button", { class: "btn ghost", type: "button", onclick: () => roundOver(key, true) }, "Finish this round")));
   }
 
-  async function roundOver(key) {
+  async function roundOver(key, early) {
     if (ending) return; ending = true;
-    clearInterval(watchId); stopTimer();
+    clearInterval(watchId); clearInterval(pollId); stopTimer();
     const g = GAME[key];
-    if (g.global) {
-      const live = g.live(); if (live > 0) await submitScore(key, live);   // a flight or game still in progress counts
-      try { if (window[g.global] && window.__pdOpen) window[g.global].close(); } catch (e) {}
-      window.__pdOpen = false;
-    }
+    render(steps(), el("h1", {}, "Saving your score…"));
+    const live = g.live();
+    if (current && current.round === key) { const p = current.send(live); await Promise.race([p, sleep(5000)]); }  // a game still in progress counts
+    try { if (window[g.global] && window.__pdOpen) window[g.global].close(); } catch (e) {}
+    window.__pdOpen = false; current = null;
+    if (early) { try { await XQ.rpc("end_round", Object.assign(auth(), { p_round: key })); } catch (e) {} }
     const info = XQ.ROUNDS[key], last = R.step === ev.rounds.length - 1;
-    R.step += 1; R.deadline = 0; save();
-    render(steps(), el("h1", {}, "Time's up: " + info.name),
-      el("div", { class: "scores" }, el("div", { class: "big" }, el("span", {}, "Your best score"), el("strong", {}, (R.best && R.best[key] || 0).toLocaleString("en-GB")))),
+    R.step += 1; save();
+    render(steps(), el("h1", {}, (early ? "Round finished: " : "Time's up: ") + info.name),
+      el("div", { class: "scores" }, el("div", { class: "big" }, el("span", {}, "Your best score"), el("strong", {}, best(key)))),
       el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: intro }, last ? "See your results" : "Next round")));
   }
 
-  // ---- Quiz ----
+  // ---- Quiz: one question at a time from the server ----
   async function quiz() {
-    deadline = roundDeadline(); ending = false;
-    if (deadline - ev.now() <= 0) return quizOver();
-    let qs;
-    try { qs = await XQ.rpc("get_quiz", { p_run: R.id, p_token: R.token }); } catch (e) { return errorPanel(e.message); }
-    if (!qs || !qs.length) {
-      R.step += 1; R.deadline = 0; save();
-      return render(steps(), el("h1", {}, "The Christmas Quiz"), el("p", {}, "No quiz questions have been added yet, so this round is skipped."), el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: intro }, "Continue")));
-    }
-    R.answered = R.answered || {}; save();
+    try { await beginRound("quiz"); } catch (e) { return errorPanel(e.message); }
+    ending = false;
+    if (deadline - performance.now() <= 0) return quizOver();
     startTimer(quizOver);
-    let i = qs.findIndex(q => !(q.id in R.answered)); if (i < 0) return quizOver();
-    const show = () => {
-      if (ending) return;
-      const q = qs[i], fb = el("p", { class: "feedback", role: "status" }), next = el("div", { class: "actions" });
-      const opts = q.options.map((o, k) => el("button", { class: "opt", type: "button", onclick: () => answer(k) }, o));
-      async function answer(k) {
-        opts.forEach(b => { b.disabled = true; });
-        try {
-          const res = await XQ.rpc("submit_quiz_answer", { p_run: R.id, p_token: R.token, p_question: q.id, p_choice: k });
-          const a = Array.isArray(res) ? res[0] : res;
-          R.answered[q.id] = !!a.correct; save();
-          opts[a.correct_index] && opts[a.correct_index].classList.add("right");
-          if (!a.correct) opts[k].classList.add("wrong");
-          fb.className = "feedback " + (a.correct ? "ok" : "no");
-          fb.textContent = a.correct ? "Correct!" : "Not quite. The answer was: " + q.options[a.correct_index];
-        } catch (e) { fb.className = "feedback no"; fb.textContent = e.message; opts.forEach(b => { b.disabled = false; }); return; }
-        i = qs.findIndex(x => !(x.id in R.answered));
-        const btn = el("button", { class: "btn", type: "button", onclick: () => (i < 0 ? quizOver() : show()) }, i < 0 ? "Finish the quiz" : "Next question");
-        next.appendChild(btn); btn.focus();
-      }
-      const done = Object.keys(R.answered).length;
-      render(steps(), el("div", { class: "qhead" }, el("span", {}, "Question " + (done + 1) + " of " + qs.length), el("span", {}, q.points + " points")),
-        el("h1", { class: "qtext" }, q.question), el("div", { class: "opts" }, opts), fb, next);
-    };
-    show();
+    R.quizRight = R.quizRight || 0; R.quizDone = R.quizDone || 0;
+    ask();
   }
-
+  async function ask() {
+    if (ending) return;
+    let q;
+    try { const rows = await XQ.rpc("next_question", auth()); q = Array.isArray(rows) ? rows[0] : rows; }
+    catch (e) { if (/time is up/i.test(e.message)) return quizOver(); return errorPanel(e.message); }
+    if (!q) {
+      if (!R.quizDone) { ending = true; stopTimer(); R.step += 1; save();
+        return render(steps(), el("h1", {}, "The Christmas Quiz"), el("p", {}, "No quiz questions have been added yet, so this round is skipped."), el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: intro }, "Continue"))); }
+      return quizOver();
+    }
+    const fb = el("p", { class: "feedback", role: "status" }), next = el("div", { class: "actions" });
+    const opts = q.options.map(o => { const b = el("button", { class: "opt", type: "button" }, o.text); b.dataset.i = o.i; b.addEventListener("click", () => answer(o.i, b)); return b; });
+    async function answer(i, btn) {
+      opts.forEach(b => { b.disabled = true; });
+      try {
+        const rows = await XQ.rpc("submit_quiz_answer", Object.assign(auth(), { p_question: q.id, p_choice: i }));
+        const a = Array.isArray(rows) ? rows[0] : rows;
+        R.quizDone += 1; if (a.correct) R.quizRight += 1; save();
+        const right = opts.find(b => Number(b.dataset.i) === a.correct_index);
+        if (right) right.classList.add("right");
+        if (!a.correct) btn.classList.add("wrong");
+        fb.className = "feedback " + (a.correct ? "ok" : "no");
+        fb.textContent = a.correct ? "Correct!" : "Not quite. The answer was: " + (right ? right.textContent : "");
+      } catch (e) {
+        if (/time is up/i.test(e.message)) return quizOver();
+        fb.className = "feedback no"; fb.textContent = e.message; opts.forEach(b => { b.disabled = false; }); return;
+      }
+      const lastQ = q.number >= q.total;
+      const b = el("button", { class: "btn", type: "button", onclick: () => (lastQ ? quizOver() : ask()) }, lastQ ? "Finish the quiz" : "Next question");
+      next.appendChild(b); b.focus();
+    }
+    render(steps(), el("div", { class: "qhead" }, el("span", {}, "Question " + q.number + " of " + q.total), el("span", {}, q.points + " points")),
+      el("h1", { class: "qtext" }, q.question), el("div", { class: "opts" }, opts), fb, next);
+  }
   async function quizOver() {
     if (ending) return; ending = true; stopTimer();
-    const right = Object.values(R.answered || {}).filter(Boolean).length, total = Object.keys(R.answered || {}).length;
+    try { await XQ.rpc("end_round", Object.assign(auth(), { p_round: "quiz" })); } catch (e) {}
     const last = R.step === ev.rounds.length - 1;
-    R.step += 1; R.deadline = 0; save();
+    R.step += 1; save();
     render(steps(), el("h1", {}, "Quiz complete"),
-      el("div", { class: "scores" }, el("div", { class: "big" }, el("span", {}, "Correct answers"), el("strong", {}, right + " of " + total))),
+      el("div", { class: "scores" }, el("div", { class: "big" }, el("span", {}, "Correct answers"), el("strong", {}, (R.quizRight || 0) + " of " + (R.quizDone || 0)))),
       el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: intro }, last ? "See your results" : "Next round")));
   }
 
-  // ---- Results ----
+  // ---- Results: always the server's numbers ----
   async function finish() {
     stopTimer();
     let res;
-    try { const rows = await XQ.rpc("finish_run", { p_run: R.id, p_token: R.token }); res = Array.isArray(rows) ? rows[0] : rows; }
+    try { const rows = await XQ.rpc("finish_run", auth()); res = Array.isArray(rows) ? rows[0] : rows; }
     catch (e) { return errorPanel(e.message); }
     R.finished = true; save();
     const boxes = ev.rounds.map(k => el("div", {}, el("span", {}, XQ.ROUNDS[k].name), el("strong", {}, (res[XQ.ROUNDS[k].col] || 0).toLocaleString("en-GB"))));
     boxes.push(el("div", { class: "big" }, el("span", {}, "Total"), el("strong", {}, (res.total || 0).toLocaleString("en-GB"))));
-    const table = el("table", {}, el("caption", { class: "sr-only" }, "Top 20 scores"), el("thead", {}, el("tr")), el("tbody"));
+    const table = el("table", { class: "compact" }, el("caption", { class: "sr-only" }, "Top 20 scores"), el("thead", {}, el("tr")), el("tbody"));
     render(el("p", { class: "eyebrow" }, "All done"), el("h1", {}, "Well played, " + (R.name || "you") + "!"),
       el("p", {}, "You are number " + res.place + " on the leaderboard."),
       el("div", { class: "scores" }, boxes),
       el("div", { class: "board" }, table),
       el("div", { class: "actions" }, el("a", { class: "btn", href: "index.html#leaderboard" }, "Back to the homepage")));
-    XQ.loadBoard(table, null, ev.rounds, R.name);
+    XQ.loadBoard(table, null, [], R.name);
   }
 
   // ---- Start ----
   (async function init() {
     try { ev = await XQ.getEvent(); } catch (e) { return errorPanel(e.message); }
+    R.step = R.step || 0;
     if (R.finished || R.step >= ev.rounds.length) return finish();
     intro();
   })();

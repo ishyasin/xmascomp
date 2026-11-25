@@ -202,7 +202,7 @@ function board(el){
 /* ---------- input: arrow keys only (Esc leaves the game) ---------- */
 function advance(){
   AU.resume();
-  if(S.mode==="menu"||S.mode==="over"){$("#ovStart").hidden=true;$("#ovEnd").hidden=true;reset();AU.go()}
+  if(S.mode==="menu"||S.mode==="over"){$("#ovStart").hidden=true;$("#ovEnd").hidden=true;reset();AU.go();try{window.__xmasGameStart&&window.__xmasGameStart("grotto")}catch(e){}}
   else if(S.mode==="pause")S.mode="play";
 }
 function kd(e){
