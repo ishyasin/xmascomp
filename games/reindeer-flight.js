@@ -1,13 +1,13 @@
-/* Coastal Flight (easter egg 9, ED&G Pharmacy Portal). Self-contained 3D game: GRAEMe flies west to east along the Sussex coast,
-   past Worthing Pier, the West Pier ruins, the i360, Brighton Palace Pier and the Royal Pavilion.
-   Mouse, drag, arrows or WASD steer; Space or hold boosts. Esc or Exit leaves. three.js r128 is hosted in vendor/three-r128.min.js.
-   Only the weekly best scores are shared (submit_coast_score / get_coast_weekly). */
+/* Sleigh Flight (The Pharmacy Christmas Competition 2026). Self-contained 3D game: Santa takes off from St Richard's Hospital,
+   Chichester, lands on Worthing Pier, flies past the i360, Brighton Palace Pier and the Royal Pavilion, lands on the
+   Royal Sussex County Hospital helipad, then flies over the Downs to the Princess Royal Hospital, Haywards Heath.
+   Keyboard only: arrows or WASD steer, Space boosts, Enter skips the tutorial, Esc leaves. three.js r128 is in vendor/. */
 (function () {
 "use strict";
 if (window.XmasSleigh) return;
 let root = null, stopFn = null, loading = false;
 const CSS = `#cfRoot body{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px}
-#cfRoot .cfg{position:relative;width:100%;aspect-ratio:16/10;max-height:72vh;border-radius:14px;overflow:hidden;background:#000;box-shadow:0 18px 40px -20px #000;touch-action:none;user-select:none;cursor:crosshair}
+#cfRoot .cfg{position:relative;width:100%;aspect-ratio:16/10;max-height:72vh;border-radius:14px;overflow:hidden;background:#000;box-shadow:0 18px 40px -20px #000;touch-action:none;user-select:none;cursor:default}
 #cfRoot canvas{display:block;width:100%;height:100%}
 #cfRoot .hud{position:absolute;left:14px;right:14px;top:10px;display:flex;justify-content:space-between;align-items:flex-start;gap:10px;font-weight:800;font-size:17px;text-shadow:0 2px 6px rgba(0,0,0,.7);pointer-events:none;color:#fff}
 #cfRoot .hud small{display:block;font-weight:600;font-size:11px;opacity:.8}
@@ -44,8 +44,27 @@ const CSS = `#cfRoot body{padding-left:max(16px,env(safe-area-inset-left,0px));p
 #cfRoot .cfr{display:flex;justify-content:space-between;gap:18px;color:#d5defa;font-size:14px;padding:1px 0}
 #cfRoot .cfr.me{color:#00cfff}
 #cfRoot .cfb{min-width:210px}
+#cfRoot .ov .btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#cfRoot button.ghost{background:transparent;border:1px solid rgba(255,255,255,.55)}
+#cfRoot button[hidden]{display:none}
+#cfRoot .tut{position:absolute;left:50%;bottom:52px;transform:translateX(-50%);background:rgba(10,24,60,.84);border:1px solid rgba(255,255,255,.35);border-radius:14px;padding:10px 18px 10px;color:#fff;text-align:center;width:min(470px,86%);pointer-events:none}
+#cfRoot .tut[hidden]{display:none}
+#cfRoot .tut b{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#7fe3ff}
+#cfRoot .tut p{margin:3px 0 9px;font-weight:800;font-size:clamp(14px,2.3vw,19px)}
+#cfRoot .kb{display:flex;gap:16px;justify-content:center;align-items:flex-end}
+#cfRoot .kc{display:grid;grid-template-columns:repeat(3,30px);gap:4px}
+#cfRoot .kc i,#cfRoot .sp{display:flex;align-items:center;justify-content:center;height:28px;border-radius:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);font-style:normal;font-weight:800;font-size:13px;color:#dfe6ff;transition:background .08s,transform .08s}
+#cfRoot .kc i.e{visibility:hidden}
+#cfRoot .sp{width:120px}
+#cfRoot .kc i.hl,#cfRoot .sp.hl{border-color:#f2c14e;box-shadow:0 0 0 1px #f2c14e;color:#fff}
+#cfRoot .kc i.on,#cfRoot .sp.on{background:#00b8e6;border-color:#fff;color:#fff;transform:translateY(2px)}
+#cfRoot .tbar{height:4px;background:rgba(255,255,255,.2);border-radius:3px;margin-top:9px;overflow:hidden}
+#cfRoot .tbar i{display:block;height:100%;width:0;background:#4caf50;transition:width .1s}
+#cfRoot .tut small{display:block;margin-top:6px;font-size:11px;color:#c9d6f5}
+#cfRoot .land{position:absolute;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,48,30,.85);border:2px solid #7dff8a;border-radius:10px;padding:6px 16px;color:#d9ffe0;font-weight:800;font-size:clamp(13px,2.2vw,17px);pointer-events:none;white-space:nowrap;display:none;z-index:4}
+#cfRoot .land em{font-style:normal;color:#fff;font-size:1.35em;margin-left:10px;letter-spacing:.1em}
 `;
-const HTML = `<button class="cfx" type="button">Exit</button><button class="cfs snd" type="button">Sound on</button><div class="cfg" id="cfstage"><div class="hud"><div><span id="cfsc">0</span><small>score</small></div><div style="text-align:center"><span id="cfhp">&hearts;&hearts;&hearts;</span><div class="meter"><i id="cfbo"></i></div><small>boost (Space / hold)</small></div><div style="text-align:right"><span id="cfal">0</span> m<small id="cfbest">Best 0</small></div></div><div class="loc" id="cfloc"></div><div class="banner" id="cfbn"></div><div class="route" id="cfroute"><span class="dot" id="cfrdot"></span></div><div class="ov" id="cfov"><div class="brand">ED&amp;G&trade;</div><div class="rule"><span></span><span></span><span></span></div><h2>Sleigh Flight</h2><div class="sub">Fly west to east along the Sussex coast: Worthing Pier, the i360, Brighton Palace Pier and the Royal Pavilion. Hoops for points, capsules for boost, a golden loop for a trick.</div><div class="cfb" id="cfboard"></div><button id="cfgo" type="button">Take off</button><div class="keys">Mouse / drag / arrows steer &middot; Space or hold to boost &middot; Esc to exit</div></div></div>`;
+const HTML = `<button class="cfx" type="button">Exit</button><button class="cfs snd" type="button">Sound on</button><div class="cfg" id="cfstage"><div class="hud"><div><span id="cfsc">0</span><small>score</small></div><div style="text-align:center"><span id="cfhp">&hearts;&hearts;&hearts;</span><div class="meter"><i id="cfbo"></i></div><small>boost (Space)</small></div><div style="text-align:right"><span id="cfal">0</span> m<small id="cfbest">Best 0</small></div></div><div class="loc" id="cfloc"></div><div class="banner" id="cfbn"></div><div class="land" id="cfland"></div><div class="tut" id="cftut" hidden><b id="cftstep">Tutorial</b><p id="cfttxt"></p><div class="kb"><div class="kc"><i class="e"></i><i data-k="w">W</i><i class="e"></i><i data-k="a">A</i><i data-k="s">S</i><i data-k="d">D</i></div><div class="sp" data-k=" ">SPACE</div><div class="kc"><i class="e"></i><i data-k="arrowup">&uarr;</i><i class="e"></i><i data-k="arrowleft">&larr;</i><i data-k="arrowdown">&darr;</i><i data-k="arrowright">&rarr;</i></div></div><div class="tbar"><i id="cftbar"></i></div><small>Practice only: nothing is scored. Enter skips to the real flight.</small></div><div class="route" id="cfroute"><span class="dot" id="cfrdot"></span></div><div class="ov" id="cfov"><div class="brand">ED&amp;G&trade;</div><div class="rule"><span></span><span></span><span></span></div><h2>Sleigh Flight</h2><div class="sub">Take off from St Richard's in Chichester, land on Worthing Pier, fly past the i360, Palace Pier and Royal Pavilion, land on the Royal Sussex County helipad, then on over the Downs to the Princess Royal. Wreaths for points, presents for boost, a golden wreath for an aileron roll.</div><div class="cfb" id="cfboard"></div><div class="btns"><button id="cftutgo" type="button">Start tutorial (Space)</button><button id="cfgo" class="ghost" type="button">Skip tutorial &middot; take off (Enter)</button></div><div class="keys">Keyboard only: arrows or WASD steer &middot; Space boosts &middot; Esc to exit</div></div></div>`;
 function build() {
   const $ = id => root.querySelector("#cf" + id);
   const stage = root.querySelector(".cfg"), ov = $("ov");
@@ -160,9 +179,11 @@ function build() {
   const dust = new THREE.Points(dG, new THREE.PointsMaterial({ color: 0xffc94a, size: .18, transparent: true, opacity: .95, depthWrite: false, blending: THREE.AdditiveBlending, map: (() => { const c = document.createElement("canvas"); c.width = c.height = 32; const x = c.getContext("2d"); const g = x.createRadialGradient(16, 16, 0, 16, 16, 16); g.addColorStop(0, "rgba(255,255,255,1)"); g.addColorStop(.25, "rgba(255,215,110,.95)"); g.addColorStop(1, "rgba(255,170,40,0)"); x.fillStyle = g; x.fillRect(0, 0, 32, 32); return new THREE.CanvasTexture(c); })() }));
   dust.frustumCulled = false; scene.add(dust); let dI = 0;
   const jetL = new THREE.PointLight(0xff3020, 1.4, 10); jetL.position.set(0, 1.1, -2.1); bodyG.add(jetL);
-  bodyG.rotation.x = -.08; robot.rotation.y = .38;
+  bodyG.rotation.x = -.04; robot.rotation.y = 0;   // straight on: nose of the team points along the flight path
   { const sc = new THREE.Group(); sc.position.set(0, .7, -.85); deer.add(sc); sc.add(S(new THREE.TorusGeometry(.33, .1, 8, 20), R.green, 0, 0, 0)); sc.children[0].rotation.x = Math.PI / 2 - .7; const tl = S(new THREE.BoxGeometry(.18, .55, .06), R.green, .28, -.3, .1); tl.rotation.z = .3; sc.add(tl); }
   const player = new THREE.Group(), trickG = new THREE.Group(); trickG.add(robot); player.add(trickG); scene.add(player);
+  // Put the roll axis through the middle of the team and sleigh (nose to tail), so the golden-wreath trick is a true aileron roll.
+  { robot.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(robot), c = bb.getCenter(new THREE.Vector3()); robot.position.x -= c.x; robot.position.y -= c.y; trickG.position.set(c.x, c.y, 0); }
   const flameMats = flames.map(f => f.material);
   const shield = new THREE.Mesh(new THREE.SphereGeometry(1.6, 20, 14), new THREE.MeshBasicMaterial({ color: 0xff5a5a, transparent: true, opacity: 0, depthWrite: false })); player.add(shield);
 
@@ -175,6 +196,15 @@ function build() {
   const mWood = col(0x8a6a4a), mIron = col(0x2e3440, .6, .4), mWhite = col(0xf4f1ea, .6), mCream = col(0xf1e2c4, .7), mTeal = col(0x2aa6a0, .5), mRust = col(0x5b3a2a, .9, .3), mGoldM = col(0xd8a52a, .4, .7);
   const mBulb = new THREE.MeshBasicMaterial({ color: 0xfff0b0 }), mCyanB = new THREE.MeshBasicMaterial({ color: 0x00cfff });
   const bulbG = new THREE.SphereGeometry(.16, 8, 6);
+  // shared pieces for the inland scenery and new landmarks
+  const gBox = new THREE.BoxGeometry(1, 1, 1), gCone = new THREE.ConeGeometry(1, 1, 7), gRoof = new THREE.ConeGeometry(.75, 1, 4), hillG = new THREE.SphereGeometry(1, 18, 10), prismG = new THREE.CylinderGeometry(1, 1, 1, 3); gRoof.rotateY(Math.PI / 4);
+  const SM = (geo, mat, x, y, z, sx, sy, sz) => { const m = new THREE.Mesh(geo, mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); return m; };
+  const prism = (len, w, h, mat, x, yb, z) => { const m = new THREE.Mesh(prismG, mat); m.rotation.x = -Math.PI / 2; const sz = h / 1.5; m.scale.set(w / 1.732, len, sz); m.position.set(x, yb + .5 * sz, z); return m; };
+  const sideX = (a, b) => (Math.random() < .5 ? -1 : 1) * rnd(a, b);
+  const mHedge = col(0x2f4a35, .9), mTrunk = col(0x4a3426, .9), mPine = col(0x1f4a33, .9), mSnowC = col(0xffffff, .8), mRoofS = col(0xe6ecf5, .9), mLead = col(0x5d6670, .7, .2);
+  const mHouse = [0xb9876a, 0xd8cdb8, 0x9a5a44, 0xe4ddd0, 0x8c7a6b].map(c => col(c, .85)), mWinL = new THREE.MeshBasicMaterial({ color: 0xffd98a }), mWinG = new THREE.MeshBasicMaterial({ color: 0xffc266 });
+  const mStone = col(0xcfc8b8, .85), mStoneD = col(0x9a948a, .9), mBrick = col(0x9a5a44, .85), mHosp = col(0xe9edf2, .7), mPad = col(0x2b2f36, .9), mPyl = col(0x9aa3ad, .6, .5);
+  const mYel = new THREE.MeshBasicMaterial({ color: 0xf2c14e }), mWhiteB = new THREE.MeshBasicMaterial({ color: 0xffffff }), mGreenL = new THREE.MeshBasicMaterial({ color: 0x7dff8a }), mRedL = new THREE.MeshBasicMaterial({ color: 0xff3030 }), mNhs = new THREE.MeshBasicMaterial({ color: 0x005eb8 });
 
   // ---------- Sea ----------
   function seaTex() { const c = document.createElement("canvas"); c.width = c.height = 256; const x = c.getContext("2d"); x.fillStyle = "#2c4466"; x.fillRect(0, 0, 256, 256);
@@ -215,7 +245,7 @@ function build() {
     return g;
   }
   function makeSeg() {
-    const g = new THREE.Group(), land = new THREE.Group(); land.position.x = -16; g.add(land);
+    const g = new THREE.Group(), land = new THREE.Group(), tl = []; land.position.x = -16; g.add(land); g.userData.terr = tl;
     land.add(B(8, .41, SEG, mSand, -18, 0, 0)); land.add(B(2.6, .42, SEG, mWet, -15.3, 0, 0));
     const foam = new THREE.Mesh(new THREE.BoxGeometry(1.8, .04, SEG), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: .5 })); foam.position.set(-14.4, .06, 0); land.add(foam);
     land.add(B(7, .9, SEG, mProm, -25.5, .25, 0)); land.add(B(8, .5, SEG, mRoad, -33.5, 0, 0)); land.add(B(1.6, .55, SEG, mProm, -38.3, .05, 0)); land.add(B(160, .8, SEG, mLand, -132, 0, 0));
@@ -226,7 +256,7 @@ function build() {
     for (let z = -SEG / 2 + 6; z < SEG / 2 - 2; z += 10.5) {
       if (Math.random() < .12) continue;
       const fl = Math.random() < .12 ? 3 : Math.floor(Math.random() * 3), floors = [3, 4, 5, 7][fl], h = floors * 4.2, ci = Math.floor(Math.random() * 6), bw = 9.6, zz = z + rnd(-.4, .4);
-      land.add(B(10, h, bw, terr[ci][fl], -44, h / 2 + .3, zz)); land.add(B(10.4, .5, bw + .1, mSlate, -44, h + .55, zz));
+      const t1 = B(10, h, bw, terr[ci][fl], -44, h / 2 + .3, zz), t2 = B(10.4, .5, bw + .1, mSlate, -44, h + .55, zz); land.add(t1, t2); tl.push(t1, t2);
     }
     for (let i = 0; i < 3; i++) { const r = rnd(30, 48), top = rnd(16, 28), sy = .55, h = new THREE.Mesh(new THREE.SphereGeometry(r, 18, 10), mHill); h.scale.set(1.4, sy, 1.1); h.position.set(rnd(-170, -118), top - r * sy, rnd(-SEG / 2, SEG / 2)); land.add(h); }
     // traffic: eastbound (same way as GRAEMe) on the left lane, westbound on the right
@@ -239,7 +269,21 @@ function build() {
     for (let i = 0; i < 3; i++) g.add(farTurbine(rnd(85, 160), rnd(-SEG / 2, SEG / 2)));
     return g;
   }
-  for (let i = 0; i < 4; i++) { const s = makeSeg(); s.position.z = 40 - i * SEG; scene.add(s); segs.push(s); }
+  // Inland strip: snowy fields, hedges, villages and the Downs (Chichester at the start, Kemp Town to Haywards Heath at the end)
+  function makeInland() {
+    const g = new THREE.Group();
+    g.add(SM(gBox, mLand, 0, 0, 0, 560, .8, SEG));
+    g.add(SM(gBox, mRoad, -34, .42, 0, 6, .06, SEG)); g.add(SM(gBox, mRoad, 0, .42, rnd(-SEG / 2 + 10, SEG / 2 - 10), 560, .06, 5));
+    for (let z = -SEG / 2 + 8; z < SEG / 2; z += 22) { g.add(SM(gBox, mLamp, -38, 2, z, .15, 3.6, .15)); const b = new THREE.Mesh(bulbG, mBulb); b.position.set(-38, 3.9, z); g.add(b); }
+    for (let i = 0; i < 4; i++) g.add(SM(gBox, mHedge, rnd(-140, 140), .7, rnd(-10, 10), 1.3, .8, SEG * rnd(.4, .9)));
+    for (let i = 0; i < 7; i++) { const x = sideX(24, 150), z = rnd(-SEG / 2 + 5, SEG / 2 - 5), w = rnd(5, 9), d = rnd(6, 10), h = rnd(3.5, 6);
+      g.add(SM(gBox, mHouse[i % mHouse.length], x, h / 2 + .4, z, w, h, d)); g.add(SM(gRoof, mRoofS, x, h + 1.9, z, w * .95, 3, d * .95)); g.add(SM(gBox, Math.random() < .7 ? mWinL : mSlate, x, h * .55 + .4, z + d / 2 + .02, w * .5, .9, .05)); }
+    for (let i = 0; i < 16; i++) { const x = sideX(20, 170), z = rnd(-SEG / 2, SEG / 2), k = rnd(2.2, 4.2);
+      g.add(SM(gBox, mTrunk, x, 1, z, .5, 1.2, .5)); g.add(SM(gCone, mPine, x, 1.5 + k, z, k * .55, k * 2, k * .55)); g.add(SM(gCone, mSnowC, x, 1.5 + k * 1.75, z, k * .3, k * .7, k * .3)); }
+    for (let i = 0; i < 3; i++) { const r = rnd(30, 48), top = rnd(14, 26); g.add(SM(hillG, mHill, sideX(95, 170), top - r * .55, rnd(-SEG / 2, SEG / 2), r * 1.4, r * .55, r * 1.1)); }
+    return g;
+  }
+  for (let i = 0; i < 4; i++) { const s = new THREE.Group(), c = makeSeg(), n = makeInland(); s.add(c, n); s.userData = { coast: c, inland: n, cars: c.userData.cars, terr: c.userData.terr }; s.position.z = 40 - i * SEG; scene.add(s); segs.push(s); }
   // drifting clouds
   const clouds = [], mCloud = new THREE.MeshBasicMaterial({ color: 0x4a557f, transparent: true, opacity: .7, fog: true });
   for (let i = 0; i < 18; i++) { const c = new THREE.Group(); for (let k = 0; k < 5; k++) { const s = new THREE.Mesh(new THREE.SphereGeometry(3 + Math.random() * 3, 10, 8), mCloud); s.position.set(k * 3.2 - 6, Math.random() * 1.2, Math.random() * 2); s.scale.y = .5; c.add(s); } c.position.set((Math.random() - .5) * 220, 30 + Math.random() * 18, -Math.random() * 300 + 20); scene.add(c); clouds.push(c); }
@@ -275,6 +319,10 @@ function build() {
     const rot = new THREE.Group(); rot.position.set(0, hub, .95); g.add(rot); rot.add(new THREE.Mesh(new THREE.SphereGeometry(.34, 10, 8), mWhite));
     for (let k = 0; k < 3; k++) { const bl = new THREE.Group(); bl.add(B(.3, 2.9, .07, mWhite, 0, 1.55, 0)); bl.rotation.z = k * 2.094; rot.add(bl); }
     g.add(B(2.6, .5, 2.6, col(0xd8483a), 0, .25, 0)); g.userData = { kind: "turb", h: hub, rot }; return g; }
+  // electricity pylon (inland version of the turbine row; same collision shape)
+  function pylon(h) { const g = new THREE.Group(); g.add(CY(.3, 1.2, h, mPyl, 0, h / 2, 0, 4)); g.add(B(6.2, .3, .3, mPyl, 0, h - .5, 0)); g.add(B(4.4, .3, .3, mPyl, 0, h - 2, 0));
+    [-2.9, 2.9, -2, 2].forEach((x, k) => g.add(CY(.06, .06, .8, mWhite, x, (k < 2 ? h - .5 : h - 2) - .45, 0, 5))); g.add(CY(.05, .3, 1.6, mPyl, 0, h + .8, 0, 4));
+    g.userData = { kind: "turb", h, rot: new THREE.Group() }; return g; }
   // seagull
   const mGull = col(0xf6f6f2, .7), mGullG = col(0x8f98a5, .7), mBeak = col(0xf2a31a, .6);
   function gull() { const g = new THREE.Group(); const body = new THREE.Mesh(new THREE.SphereGeometry(.5, 12, 10), mGull); body.scale.set(.62, .5, 1.15); g.add(body);
@@ -306,6 +354,9 @@ function build() {
       pv.add(B(10, 3.2, 6.2, mWhite, 0, 1.6, 0, true)); pv.add(B(10.4, .35, 6.6, mTeal, 0, 3.4, 0)); const dm = dome(3.2, 2, mWhite); dm.scale.x = 1.55; dm.position.y = 3.5; pv.add(dm);
       pv.add(B(8.4, .6, .1, mCyanB, 0, 1.9, 3.12)); pv.add(B(1.7, 5.2, 1.7, mWhite, 4.3, 2.6, 0)); pv.add(B(2, .3, 2, mTeal, 4.3, 5.3, 0)); pv.add(CY(.05, .05, 2.2, mIron, 4.3, 6.4, 0, 5)); g.add(pv);
       [[-6, 4.8, 3.6], [-3, 4.8, 3.6]].forEach(() => {}); g.add(B(2.4, 2, 2.2, mCream, -26, 5.9, 0)); g.add(B(2.8, .3, 2.6, mTeal, -26, 7, 0)); boxes.push({ x0: 14.8, x1: 25.2, y0: 4.6, y1: 8.8, z0: -3.4, z1: 3.4 });
+    } else if (o.name !== "b") {
+      const sg = sign(o.sign, "#12306b", "#ffffff", 10, 2.5); sg.position.set(-44, 9.5, 0); g.add(sg); [-48.5, -39.5].forEach(x => g.add(CY(.14, .14, 5, mIron, x, 7.3, 0, 6)));
+      g.add(B(6, 3, Dd - .4, mCream, xe - 4, 6.3, 0)); g.add(B(6.4, .3, Dd, mTeal, xe - 4, 7.9, 0));
     } else {
       const sg = sign("BRIGHTON PALACE PIER", "#0f5c57", "#fff3c9", 11, 2.75); sg.position.set(-40, 10.7, Dd / 2 - .3); g.add(sg);
       g.add(B(13, 5, Dd - 1, mCream, -40, 7.3, 0, true)); const dm = dome(3.6, 3.4, mTeal); dm.position.set(-40, 9.8, 0); g.add(dm); [-45, -35].forEach(x => { const t = CY(.3, .3, 3, mWhite, x, 11.8, 0, 8); g.add(t); g.add(B(1.8, .8, .05, col(0xe8575a), x + 1, 12.9, 0)); });
@@ -321,7 +372,7 @@ function build() {
       boxes.push({ x0: -2.6, x1: -1.0, y0: 4.8, y1: 8.8, z0: -1.4, z1: 1.4 }, { x0: 5.0, x1: 6.6, y0: 4.8, y1: 8.8, z0: -1.4, z1: 1.4 });
       boxes.push({ x0: 12, x1: 16, y0: 4.6, y1: 9.8, z0: -2.2, z1: 2.2 }); g.userData.circs = [{ x: 2, y: 11.2, r: 4.7, zh: 1.1 }]; g.userData.dyn = (o2, t) => { wr.rotation.z = -t * .28; gond.forEach(gp => gp.rotation.z = t * .28); };
     }
-    g.userData.kind = "lm"; g.userData.D = Math.max(Dd, 8); g.userData.boxes = boxes; g.userData.under = { x0: xs, x1: xe, z0: -Dd / 2, z1: Dd / 2, pts: o.name === "w" ? 60 : 90 }; return g;
+    g.userData.kind = "lm"; g.userData.D = Math.max(Dd, 8); g.userData.boxes = boxes; g.userData.under = o.name === "w" || o.name === "b" ? { x0: xs, x1: xe, z0: -Dd / 2, z1: Dd / 2, pts: o.name === "w" ? 60 : 90 } : null; return g;
   }
   function westPier() {
     const g = new THREE.Group(); const boxes = [];
@@ -351,25 +402,123 @@ function build() {
     g.scale.setScalar(2.7); g.userData = { kind: "lm", D: 92, boxes: [] }; return g;
   }
 
-  // ---------- Route timeline (distance along one lap) ----------
-  const LAP = 3400, SPZ = 190;
+  // ---------- New landmarks ----------
+  function helipad(r) { const g = new THREE.Group(); g.add(CY(r, r, .2, mPad, 0, .1, 0, 32)); const ri = new THREE.Mesh(new THREE.RingGeometry(r * .78, r * .88, 40), mYel); ri.rotation.x = -Math.PI / 2; ri.position.y = .22; g.add(ri);
+    const w = r * .12; [-1, 1].forEach(k => g.add(B(w, .05, r * .9, mWhiteB, k * r * .28, .23, 0))); g.add(B(r * .56, .05, w, mWhiteB, 0, .23, 0));
+    for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2, b = new THREE.Mesh(bulbG, mGreenL); b.position.set(Math.cos(a) * r * .97, .32, Math.sin(a) * r * .97); b.scale.setScalar(1.5); g.add(b); } return g; }
+  const beacon = (x, y, z) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(.7, .7, 44, 12, 1, true), new THREE.MeshBasicMaterial({ color: 0x7dff8a, transparent: true, opacity: .16, depthWrite: false, fog: false })); m.position.set(x, y + 22, z); return m; };
+  function windows(g, mat, x, y0, y1, z0, z1, dz, dy) { for (let z = z0; z <= z1; z += dz) for (let y = y0; y <= y1; y += dy) g.add(B(.12, 1.3, dz * .55, Math.random() < .65 ? mWinL : mat, x, y, z)); }
+  function stRichards() {
+    const g = new THREE.Group();
+    g.add(B(16, 12, 46, mHosp, -44, 6, -25, true)); g.add(B(16.4, .5, 46.4, mSlate, -44, 12.25, -25)); windows(g, mGlass, -35.93, 2.4, 10.5, -45, -5, 4, 3);
+    g.add(B(14, 8, 24, mHosp, -64, 4, -36)); g.add(B(26, 6, 10, mHosp, -50, 3, -54));
+    const sg = sign("ST RICHARD'S HOSPITAL", "#005eb8", "#ffffff", 22, 3.4); sg.position.set(-44, 15.2, -1.9); g.add(sg);
+    const hp = helipad(5); hp.position.set(0, .4, 0); g.add(hp);
+    const ws = new THREE.Group(); ws.add(CY(.08, .08, 5, mIron, 0, 2.5, 0, 6)); const sock = new THREE.Mesh(new THREE.ConeGeometry(.45, 2.2, 10, 1, true), col(0xff7a1a, .7)); sock.rotation.z = Math.PI / 2; sock.position.set(1.1, 4.8, 0); ws.add(sock); ws.position.set(9, .4, -6); g.add(ws);
+    g.userData = { kind: "lm", D: 120, boxes: [] }; return g;
+  }
+  function cathedral() {
+    const g = new THREE.Group();
+    g.add(B(11, 10, 64, mStone, 0, 5, 0, true)); g.add(prism(64, 11.6, 5, mLead, 0, 10, 0)); g.add(B(30, 9, 10, mStone, 0, 4.5, -6)); { const tr = new THREE.Group(); tr.add(prism(30, 10.6, 4.5, mLead, 0, 9, 0)); tr.rotation.y = Math.PI / 2; tr.position.z = -6; g.add(tr); }
+    for (let z = -28; z <= 28; z += 7) { if (Math.abs(z + 6) < 6) continue; g.add(B(.1, 5, 2, mWinG, 5.56, 5.2, z)); g.add(B(1.2, 9, 1, mStone, 5.9, 4.5, z + 3.5)); }
+    g.add(B(10, 11, 10, mStone, 0, 15, -6)); [[-4.6, -1.4], [4.6, -1.4], [-4.6, -10.6], [4.6, -10.6]].forEach(([x, z]) => g.add(CY(.25, .55, 4, mStone, x, 22.5, z, 6)));
+    g.add(CY(.15, 4.4, 34, mStoneD, 0, 37.5, -6, 8)); { const c = new THREE.Mesh(new THREE.SphereGeometry(.45, 8, 6), mGoldM); c.position.set(0, 54.8, -6); g.add(c); }
+    g.add(B(9, 22, 9, mStone, 15, 11, 26)); for (let k = 0; k < 4; k++) g.add(B(1.6, 1.2, 1.6, mStone, 15 + (k % 2 ? 3.8 : -3.8), 22.6, 26 + (k < 2 ? 3.8 : -3.8)));
+    const sg = sign("CHICHESTER CATHEDRAL", "#2a2f3a", "#f3e6c8", 12, 2); sg.position.set(0, 3, 32.1); g.add(sg);
+    g.userData = { kind: "lm", D: 80, boxes: [] }; return g;
+  }
+  function arundel() {
+    const g = new THREE.Group(), st = mStoneD;
+    g.add(SM(hillG, mHill, 0, -6, 0, 60, 22, 46));
+    const by = 13; g.add(CY(7, 7.6, 10, st, 0, by + 5, 0, 18)); for (let k = 0; k < 14; k++) { const a = k / 14 * Math.PI * 2; g.add(B(1.5, 1.6, 1.3, st, Math.cos(a) * 7, by + 10.6, Math.sin(a) * 7)); }
+    g.add(B(40, 8, 2.5, st, 14, by + 2, 15)); g.add(B(2.5, 8, 30, st, 34, by + 2, 0)); windows(g, st, 35.3, by + 1, by + 4, -12, 12, 4, 3);
+    [[-6, 15], [34, 15], [34, -15]].forEach(([x, z]) => { g.add(CY(3, 3.2, 13, st, x, by + 4.5, z, 12)); for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; g.add(B(1, 1.2, 1, st, x + Math.cos(a) * 3, by + 11.6, z + Math.sin(a) * 3)); } });
+    g.add(CY(.08, .08, 5, mIron, 0, by + 13.5, 0, 5)); g.add(B(2.6, 1.5, .06, col(0xc0392b, .7), 1.3, by + 15.2, 0));
+    g.userData = { kind: "lm", D: 90, boxes: [] }; return g;
+  }
+  function worthingStage() {
+    const g = new THREE.Group(), L = 40, w = 16;
+    g.add(B(w, .6, L, mWood, 0, 4.5, 0, true)); g.add(B(w, .3, L - .4, mIron, 0, 4.05, 0));
+    for (let z = -L / 2 + 2; z < L / 2; z += 6) [-1, 1].forEach(k => g.add(CY(.28, .36, 4.2, mIron, k * (w / 2 - .7), 2.1, z, 8)));
+    [-1, 1].forEach(k => { g.add(B(.1, .1, L, mWhite, k * (w / 2 - .1), 5.5, 0)); for (let z = -L / 2 + 1; z < L / 2; z += 3) { g.add(B(.1, 1, .1, mWhite, k * (w / 2 - .1), 5.1, z)); const b = new THREE.Mesh(bulbG, mBulb); b.position.set(k * (w / 2 - .1), 5.7, z); g.add(b); } });
+    const hp = helipad(6.2); hp.position.set(0, 4.8, 2); g.add(hp); g.add(beacon(0, 4.8, 2));
+    const sg = sign("WORTHING PIER · SANTA STOP", "#12306b", "#ffffff", 12, 2.2); sg.position.set(0, 8.4, -L / 2 + .3); g.add(sg); [-5.6, 5.6].forEach(x => g.add(CY(.12, .12, 3.4, mIron, x, 6.5, -L / 2 + .2, 6)));
+    g.userData = { kind: "lm", D: L, boxes: [{ x0: -w / 2, x1: w / 2, y0: 3.8, y1: 4.8, z0: -L / 2, z1: L / 2 }], pad: { x0: -w / 2, x1: w / 2, z0: -L / 2, z1: L / 2, stop: 14, y: 4.8, name: "Worthing Pier", pts: 200 } }; return g;
+  }
+  function lancing() {
+    const g = new THREE.Group(); g.add(SM(hillG, mHill, 0, -4, 0, 50, 14, 40));
+    g.add(B(9, 26, 44, mStone, 0, 21, 0, true)); g.add(prism(44, 9.4, 7, mLead, 0, 34, 0));
+    for (let z = -18; z <= 18; z += 6) { g.add(B(2.4, 24, 1, mStone, 5.2, 20, z)); g.add(CY(.2, .45, 4, mStone, 6.2, 34, z, 6)); if (z < 18) g.add(B(.1, 12, 2.6, mWinG, 4.56, 22, z + 3)); }
+    const rose = new THREE.Mesh(new THREE.CircleGeometry(3.2, 28), mWinG); rose.position.set(0, 26, 22.06); g.add(rose); [-4.3, 4.3].forEach(x => g.add(CY(.3, .7, 9, mStone, x, 38, 22, 6)));
+    g.userData = { kind: "lm", D: 60, boxes: [] }; return g;
+  }
+  function shoreham() {
+    const g = new THREE.Group(), mB = col(0x7d4a3a, .85);
+    g.add(CY(1.5, 2.3, 62, col(0x9a9fa6, .7), 0, 31, 0, 14)); [12, 30, 48, 61].forEach(y => { const l = new THREE.Mesh(bulbG, mRedL); l.position.set(1.8, y, 0); l.scale.setScalar(2); g.add(l); });
+    g.add(B(30, 18, 40, mB, -26, 9, 0, true)); g.add(B(30.4, .6, 40.4, mSlate, -26, 18.3, 0)); windows(g, mGlass, -10.93, 3, 15, -16, 16, 4, 3);
+    const sg = sign("SHOREHAM PORT", "#2a2f3a", "#ffffff", 10, 2); sg.position.set(-26, 20, 20.1); g.add(sg);
+    g.userData = { kind: "lm", D: 50, boxes: [] }; return g;
+  }
+  function rsch() {
+    const g = new THREE.Group(), H = 9;
+    g.add(B(30, H, 60, mHosp, -4, H / 2, 0, true)); g.add(B(30.4, .3, 60.4, mSlate, -4, H + .1, 0));
+    for (let y = 1.6; y < H - 1; y += 2.6) { g.add(B(28, 1.2, .1, Math.random() < .5 ? mWinL : mGlass, -4, y, 30.06)); g.add(B(.1, 1.2, 58, mGlass, 11.06, y, 0)); for (let z = -26; z < 28; z += 5) if (Math.random() < .5) g.add(B(.12, 1.1, 3, mWinL, 11.07, y, z)); }
+    g.add(B(14, 30, 16, mHosp, -34, 15, -10, true)); windows(g, mGlass, -26.93, 3, 28, -16, -4, 4, 3.2); g.add(B(12, 18, 30, mBrick, -52, 9, 16));
+    const sg = sign("ROYAL SUSSEX COUNTY HOSPITAL", "#005eb8", "#ffffff", 26, 3.4); sg.position.set(-4, 5.6, 30.12); g.add(sg);
+    const hp = helipad(7); hp.position.set(-4, H, 2); g.add(hp); g.add(beacon(-4, H, 2));
+    g.userData = { kind: "lm", D: 64, boxes: [{ x0: -19, x1: 11, y0: 0, y1: H, z0: -30, z1: 30 }], pad: { x0: -11, x1: 3, z0: -22, z1: 24, stop: 12, y: H + .2, name: "the RSCH helipad", pts: 200 } }; return g;
+  }
+  function sails() { const s = new THREE.Group(); for (let k = 0; k < 4; k++) { const b = new THREE.Group(); b.add(B(1.3, 8, .12, mWhite, .5, 4.4, 0)); b.add(B(.18, 8.8, .18, mWood, 0, 4.4, 0)); b.rotation.z = k * Math.PI / 2 + .3; s.add(b); } return s; }
+  function windmills() {
+    const g = new THREE.Group(); g.add(SM(hillG, mHill, -20, -8, 0, 70, 16, 44));
+    const jack = new THREE.Group(); jack.position.set(0, 6, 0); jack.add(CY(2.3, 3.6, 12, col(0x1d1f24, .8), 0, 6, 0, 12)); jack.add(CY(.15, 2.7, 2.6, col(0x30343b, .7), 0, 13.3, 0, 12)); const sj = sails(); sj.position.set(0, 11, 3.2); jack.add(sj); g.add(jack);
+    const jill = new THREE.Group(); jill.position.set(-20, 6, 12); jill.add(CY(.45, .45, 4.5, mWood, 0, 2.25, 0, 8)); jill.add(B(4, 5, 4.6, mWhite, 0, 7, 0)); jill.add(prism(4.6, 4.4, 2, mSlate, 0, 9.5, 0)); const sl2 = sails(); sl2.position.set(0, 8, 2.6); jill.add(sl2); g.add(jill);
+    const sg = sign("JACK & JILL WINDMILLS", "#2a2f3a", "#ffffff", 10, 1.8); sg.position.set(-10, 3.2, 24); g.add(sg);
+    g.userData = { kind: "lm", D: 70, boxes: [], dyn: (o, t) => { sj.rotation.z = t * .9; sl2.rotation.z = t * .7 + 1; } }; return g;
+  }
+  function prh() {
+    const g = new THREE.Group();
+    g.add(B(14, 10, 50, mBrick, -8, 5, -10, true)); g.add(B(14.4, .4, 50.4, mSlate, -8, 10.2, -10)); windows(g, mGlass, -.93, 2, 8.5, -32, 12, 4, 3);
+    g.add(B(30, 7, 14, mBrick, -26, 3.5, 20)); g.add(B(18, 13, 18, mHosp, -34, 6.5, -24));
+    const sg = sign("PRINCESS ROYAL HOSPITAL", "#005eb8", "#ffffff", 20, 3); sg.position.set(-20, 9, 27.1); g.add(sg);
+    g.userData = { kind: "lm", D: 70, boxes: [] }; return g;
+  }
+  function practicePad() { const g = new THREE.Group(), hp = helipad(6.5); hp.position.set(0, .4, 0); g.add(hp); g.add(beacon(0, .4, 0));
+    g.userData = { kind: "lm", D: 30, boxes: [], pad: { x0: -7, x1: 7, z0: -14, z1: 14, stop: 10, y: .6, name: "the practice helipad", pts: 0, tut: true } }; return g; }
+
+  // ---------- Route (distance along one journey: St Richard's to the Princess Royal) ----------
+  const LAP = 6300, SPZ = 190, COAST_IN = 650, COAST_OUT = 4520;
+  const modeAt = d => { d = ((d % LAP) + LAP) % LAP; return d < COAST_IN || d >= COAST_OUT ? "in" : "coast"; };
   const add = (o, x, y, z) => { o.position.set(x, y, z); scene.add(o); things.push(o); return o; };
   const TL = [
-    { at: 450, quiet: [380, 540], fn: z => add(pier({ name: "w", xe: 27, Dd: 3.4 }), 0, 0, z) },
-    { at: 1200, quiet: [1130, 1280], fn: z => add(westPier(), 0, 0, z) },
-    { at: 1420, quiet: [1350, 1480], fn: z => add(i360(), 0, 0, z) },
-    { at: 2100, quiet: [2020, 2210], fn: z => add(pier({ name: "b", xe: 40, Dd: 7 }), 0, 0, z) },
-    { at: 2900, quiet: [2780, 2950], fn: z => add(pavilion(), -96, 0, z) }
+    { at: 0, fn: z => add(stRichards(), 0, 0, z) },
+    { at: 330, quiet: [250, 420], fn: z => add(cathedral(), -72, 0, z) },
+    { at: 950, quiet: [880, 1010], fn: z => add(pier({ name: "bog", xe: -22, Dd: 4.5, sign: "BOGNOR REGIS PIER" }), 0, 0, z) },
+    { at: 1500, fn: z => add(arundel(), -125, 0, z) },
+    { at: 2070, ahead: 330, quiet: [1700, 2120], calm: true, fn: z => add(worthingStage(), 0, 0, z) },
+    { at: 2100, quiet: [1700, 2120], fn: z => add(pier({ name: "w", xe: 27, Dd: 3.4 }), 0, 0, z) },
+    { at: 2600, fn: z => add(lancing(), -100, 0, z) },
+    { at: 2950, fn: z => add(shoreham(), -40, 0, z) },
+    { at: 3500, quiet: [3430, 3560], fn: z => add(westPier(), 0, 0, z) },
+    { at: 3720, quiet: [3650, 3780], fn: z => add(i360(), 0, 0, z) },
+    { at: 4150, quiet: [4070, 4260], fn: z => add(pier({ name: "b", xe: 40, Dd: 7 }), 0, 0, z) },
+    { at: 4380, quiet: [4300, 4430], fn: z => add(pavilion(), -96, 0, z) },
+    { at: 4800, ahead: 360, quiet: [4440, 4880], calm: true, fn: z => add(rsch(), 0, 0, z) },
+    { at: 5350, quiet: [5280, 5420], fn: z => add(windmills(), -42, 0, z) },
+    { at: 6060, quiet: [5930, 6160], fn: z => add(prh(), -40, 0, z) }
   ];
-  for (let i = 0; i < 6; i++) TL.push({ at: 2790 + i * 14, fn: z => { const x = Math.sin(i * .9) * 5; add(ring(), x, 6.5 + Math.cos(i * .9) * 2.5, z); } });
-  TL.push({ at: 2880, fn: z => add(goldRing(), 0, 7.5, z) });
-  TL.sort((a, b) => a.at - b.at);
+  for (let i = 0; i < 6; i++) TL.push({ at: 5950 + i * 14, fn: z => { const x = Math.sin(i * .9) * 5; add(ring(), x, 6.5 + Math.cos(i * .9) * 2.5, z); } });
+  TL.push({ at: 6040, fn: z => add(goldRing(), 0, 7.5, z) });
+  TL.forEach(e => { e.ahead = e.ahead || SPZ; }); TL.sort((a, b) => (a.at - a.ahead) - (b.at - b.ahead));
   const PASS = [
-    { at: 0, text: "Worthing seafront" }, { at: 450, text: "Worthing Pier" }, { at: 820, text: "Hove seafront" }, { at: 1200, text: "West Pier (ruins)" },
-    { at: 1420, text: "The i360" }, { at: 1650, text: "Brighton seafront" }, { at: 2100, text: "Brighton Palace Pier" }, { at: 2500, text: "Kemp Town" }, { at: 2900, text: "Royal Pavilion \u00b7 journey complete +250", bonus: 250 }
+    { at: 0, text: "St Richard's Hospital, Chichester · take off!" }, { at: 330, text: "Chichester Cathedral" }, { at: 700, text: "Out to the coast" }, { at: 950, text: "Bognor Regis Pier" },
+    { at: 1500, text: "Littlehampton · Arundel Castle to the north" }, { at: 1720, text: "Worthing ahead · land on the pier" }, { at: 2600, text: "Lancing College Chapel" },
+    { at: 2950, text: "Shoreham Port" }, { at: 3250, text: "Hove seafront" }, { at: 3500, text: "West Pier (ruins)" }, { at: 3720, text: "The i360" }, { at: 4150, text: "Brighton Palace Pier" },
+    { at: 4380, text: "The Royal Pavilion" }, { at: 4460, text: "Kemp Town · land on the RSCH helipad" }, { at: 5350, text: "Jack and Jill windmills, Clayton" }, { at: 5650, text: "Over Ditchling Beacon" },
+    { at: 6060, text: "Princess Royal Hospital · journey complete +250", bonus: 250 }, { at: 6200, text: "Back to Chichester for another lap" }
   ];
-  const LOC = [[0, "Worthing seafront"], [500, "Heading east"], [820, "Hove"], [1200, "West Pier & i360"], [1520, "Brighton seafront"], [2200, "Brighton"], [2500, "Kemp Town"], [2820, "Royal Pavilion"], [3100, "Heading west again"]];
-  const STOPS = [[450, "Worthing Pier"], [1200, "West Pier"], [1420, "i360"], [2100, "Palace Pier"], [2900, "Royal Pavilion"]];
+  const LOC = [[0, "Chichester"], [650, "West Sussex coast"], [900, "Bognor Regis"], [1400, "Littlehampton"], [1750, "Worthing"], [2450, "Lancing"], [2850, "Shoreham-by-Sea"], [3250, "Hove"], [3600, "Brighton"], [4460, "Kemp Town"], [4950, "South Downs"], [5800, "Haywards Heath"]];
+  const STOPS = [[0, "St Richard's"], [2070, "Worthing ↓"], [3720, "i360"], [4150, "Palace Pier"], [4800, "RSCH ↓"], [6060, "Princess Royal"]];
   STOPS.forEach((s, i) => { const b = document.createElement("b"), u = document.createElement("u"); b.style.left = u.style.left = (s[0] / LAP * 100) + "%"; u.textContent = s[1]; if (i % 2) u.className = "up"; $("route").append(b, u); });
   const esc = t => String(t == null ? "" : t).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
   function loadBoard() { const el = $("board"); if (!el || typeof sb === "undefined") return; try { Promise.resolve(sb.rpc("get_coast_weekly", { p_weeks_ago: 0 })).then(r => { const d = (r && r.data) || []; if (dead || !el.isConnected) return;
@@ -377,11 +526,14 @@ function build() {
 
   // ---------- Spawning ----------
   const BX = 16, BYMIN = 1.6, BYMAX = 13;
-  let lapOff = 0, li = 0, pi = 0, lapNo = 1;
-  const inQuiet = P => TL.some(e => e.quiet && P >= e.quiet[0] && P <= e.quiet[1]);
+  let lapOff = 0, li = 0, lapS = 0, pi = 0, lapNo = 1;
+  const zoneAt = P => { P = ((P % LAP) + LAP) % LAP; return TL.find(e => e.quiet && P >= e.quiet[0] && P <= e.quiet[1]); };
+  // landmarks come in on an absolute schedule so the next lap's St Richard's is already in place when a lap ends
+  function spawnTL() { while (lapS * LAP + TL[li].at - TL[li].ahead <= dist) { const e = TL[li]; e.fn(-(lapS * LAP + e.at - dist)); if (++li >= TL.length) { li = 0; lapS++; } } }
   function spawn(lapD) {
-    const z = -SPZ, r = Math.random();
-    if (inQuiet(lapD + SPZ)) {
+    const z = -SPZ, r = Math.random(), zone = zoneAt(lapD + SPZ), inl = modeAt(lapD + SPZ) === "in";
+    if (zone && TL.some(e => e.calm && e.quiet && e.quiet === zone.quiet)) return;
+    if (zone) {
       const q = Math.random();
       if (q < .06) add(goldRing(), rnd(-9, 9), rnd(5, 10.5), z);
       else if (q < .7) { const n = 1 + Math.floor(Math.random() * 3), x0 = rnd(-11, 11), y0 = rnd(4, 11), dx = rnd(-4, 4), dy = rnd(-1.5, 1.5); for (let i = 0; i < n; i++) add(ring(), Math.max(-BX + 2, Math.min(BX - 2, x0 + dx * i)), Math.max(3.5, Math.min(12, y0 + dy * i)), z - i * 16); }
@@ -390,26 +542,35 @@ function build() {
     }
     if (r < .1) { add(goldRing(), rnd(-9, 9), rnd(5, 10.5), z); }
     else if (r < .45) { const n = 1 + Math.floor(Math.random() * 3), x0 = rnd(-11, 11), y0 = rnd(4, 11), dx = rnd(-4, 4), dy = rnd(-1.5, 1.5); for (let i = 0; i < n; i++) add(ring(), Math.max(-BX + 2, Math.min(BX - 2, x0 + dx * i)), Math.max(3.5, Math.min(12, y0 + dy * i)), z - i * 16); }
-    else if (r < .68) { const gap = Math.floor(Math.random() * 6); for (let i = 0; i < 6; i++) { if (i === gap) continue; if (Math.random() < .3) continue; add(turbine(rnd(10, 12.5)), -12.5 + i * 5, 0, z); } if (Math.random() < .7) add(capsule(), -12.5 + gap * 5, rnd(4, 9), z); }
+    else if (r < .68) { const gap = Math.floor(Math.random() * 6); for (let i = 0; i < 6; i++) { if (i === gap) continue; if (Math.random() < .3) continue; add(inl ? pylon(rnd(10, 12.5)) : turbine(rnd(10, 12.5)), -12.5 + i * 5, 0, z); } if (Math.random() < .7) add(capsule(), -12.5 + gap * 5, rnd(4, 9), z); }
     else if (r < .9) { const n = 2 + Math.floor(Math.random() * 3); for (let i = 0; i < n; i++) add(gull(), rnd(-BX + 1, BX - 1), rnd(3, 12), z - i * 9); if (Math.random() < .6) add(capsule(), rnd(-11, 11), rnd(4, 10), z - 18); }
     else { add(capsule(), rnd(-11, 11), rnd(4, 11), z); if (Math.random() < .25) add(heart(), rnd(-11, 11), rnd(4, 11), z - 12); }
   }
 
   // ---------- State and controls ----------
-  let trick = 0, surge = 0, sparks = null, bt = 0;
+  let trick = 0, rollDir = 1, surge = 0, sparks = null, bt = 0, ldg = null, appr = null, tut = null;
+  const REST = 1.45, landEl = $("land"), tutEl = $("tut"), tutGo = $("tutgo"), keyEls = Array.from(root.querySelectorAll("[data-k]"));
   let speed, dist, score, hearts, boost, alive, running = false, t = 0, best = 0, nextAt, invul, shake, boosting = false, combo, tx = 0, ty = 6, px = 0, py = 6;
   try { best = +localStorage.getItem("cfbest") || 0; } catch (e) {}
   bestEl.textContent = "Best " + best;
   const heartsTxt = () => { hpEl.textContent = "\u2665".repeat(Math.max(0, hearts)) + "\u2661".repeat(Math.max(0, 3 - hearts)); };
   function showBanner(txt) { bnEl.textContent = txt; bnEl.classList.add("on"); clearTimeout(bt); bt = setTimeout(() => bnEl.classList.remove("on"), 3000); }
-  function reset() { things.forEach(o => scene.remove(o)); things.length = 0; speed = 28; dist = 0; score = 0; hearts = 3; boost = 1; alive = true; nextAt = 40; invul = 0; shake = 0; combo = 0; trick = 0; surge = 0; trickG.rotation.set(0, 0, 0); tx = 0; ty = 6; px = 0; py = 6; player.position.set(0, 6, 0); lapOff = 0; li = 0; pi = 0; lapNo = 1; bnEl.classList.remove("on"); heartsTxt(); }
+  function reset() { things.forEach(o => scene.remove(o)); things.length = 0; speed = 28; dist = 0; score = 0; hearts = 3; boost = 1; alive = true; nextAt = 40; invul = 0; shake = 0; combo = 0; trick = 0; surge = 0; trickG.rotation.set(0, 0, 0); tx = 0; ty = REST; px = 0; py = REST; player.position.set(0, REST, 0); lapOff = 0; li = 0; lapS = 0; pi = 0; lapNo = 1; lapD = 0; ldg = null; appr = null; speed = 0; nextAt = 150;
+    bnEl.classList.remove("on"); landEl.style.display = "none"; heartsTxt(); spawnTL(); segs.forEach(sg => setMode(sg)); }
+  // The seafront terraces open up where an inland landmark should be in view (Arundel, Lancing, Shoreham, the Royal Pavilion).
+  const VIEW = [[1330, 1560], [2420, 2640], [2780, 3000], [4250, 4420]];
+  function setMode(sg) { const d = lapD - sg.position.z, inl = modeAt(d) === "in", m = ((d % LAP) + LAP) % LAP, open = VIEW.some(([a, b]) => m + SEG / 2 >= a && m - SEG / 2 <= b);
+    sg.userData.coast.visible = !inl; sg.userData.inland.visible = inl; sg.userData.terr.forEach(t => { t.visible = !open; }); }
   const keys = {};
-  on(window, "keydown", e => { const k = e.key.toLowerCase(); keys[k] = true; if (k === " ") { if (!ov.hidden) $("go").click(); else boosting = true; e.preventDefault(); } if (k === "enter" && !ov.hidden) $("go").click(); if (k.startsWith("arrow")) e.preventDefault(); });
-  on(window, "keyup", e => { const k = e.key.toLowerCase(); keys[k] = false; if (k === " ") boosting = false; });
-  function pointer(e) { const r = stage.getBoundingClientRect(); const nx = (e.clientX - r.left) / r.width, ny = (e.clientY - r.top) / r.height; tx = (nx - .5) * 2 * BX; ty = BYMAX - ny * (BYMAX - BYMIN); }
-  stage.addEventListener("pointermove", e => { if (running && alive && (e.pointerType === "mouse" || e.buttons)) pointer(e); });
-  let hold = null; stage.addEventListener("pointerdown", e => { pointer(e); hold = setTimeout(() => boosting = true, 350); });
-  on(window, "pointerup", () => { clearTimeout(hold); if (!keys[" "]) boosting = false; });
+  // Keyboard only: no mouse or touch steering.
+  const keyVis = (k, v) => keyEls.forEach(el => { if (el.dataset.k === k) el.classList.toggle("on", v); });
+  on(window, "keydown", e => { const k = e.key.toLowerCase(); keys[k] = true; keyVis(k, true);
+    if (k === " " || k === "enter") { e.preventDefault(); if (e.repeat && !ov.hidden) return;
+      if (!ov.hidden) { if (k === " " && !tutGo.hidden) tutGo.click(); else $("go").click(); return; }
+      if (k === "enter" && tut) { startReal(); return; } if (k === " ") boosting = true; }
+    if (k.startsWith("arrow")) e.preventDefault(); });
+  on(window, "keyup", e => { const k = e.key.toLowerCase(); keys[k] = false; keyVis(k, false); if (k === " ") boosting = false; });
+  on(window, "blur", () => { for (const k in keys) keys[k] = false; boosting = false; keyEls.forEach(el => el.classList.remove("on")); });
   function resize() { const w = stage.clientWidth, h = stage.clientHeight; renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
   on(window, "resize", resize); resize();
   // ---------- Sound (Web Audio, no files). M or the Sound button mutes; the choice is remembered. ----------
@@ -460,9 +621,11 @@ function build() {
   let boWas = false;
 
   function hurt() {
-    if (invul > 0 || trick > 0) return; AU.hit(); hearts--; invul = 1.6; shake = .5; combo = 0; heartsTxt();
+    if (invul > 0 || trick > 0 || ldg) return;
+    if (tut) { AU.hit(); invul = 1; shake = .4; showBanner("Ouch! In the real flight that costs a heart"); return; }
+    AU.hit(); hearts--; invul = 1.6; shake = .5; combo = 0; heartsTxt();
     if (hearts <= 0) { alive = false; AU.over(); const total = score; if (total > best) { best = total; try { localStorage.setItem("cfbest", best); } catch (e) {} bestEl.textContent = "Best " + best; }
-      ov.querySelector("h2").textContent = "Score " + total.toLocaleString("en-GB"); ov.querySelector(".sub").textContent = Math.floor(dist) + " m flown along the coast. Santa needs a cup of tea."; $("go").textContent = "Fly again"; ov.hidden = false; $("board").innerHTML = "";
+      ov.querySelector("h2").textContent = "Score " + total.toLocaleString("en-GB"); ov.querySelector(".sub").textContent = Math.floor(dist) + " m flown. Santa needs a cup of tea."; $("go").textContent = "Fly again (Enter)"; $("go").classList.remove("ghost"); tutGo.hidden = true; landEl.style.display = "none"; ov.hidden = false; $("board").innerHTML = "";
       if (total > 0 && typeof sb !== "undefined") { try { Promise.resolve(sb.rpc("submit_coast_score", { p_score: total, p_metres: Math.floor(dist) })).then(() => { if (!dead) loadBoard(); }).catch(() => {}); } catch (e) {} } else loadBoard(); }
   }
   function burst() {
@@ -471,7 +634,41 @@ function build() {
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
     const p = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xffd34d, size: .5, transparent: true, opacity: 1, depthWrite: false })); p.frustumCulled = false; p.position.copy(player.position); scene.add(p); sparks = { p, vel, age: 0 };
   }
-  function startTrick() { AU.gold(); trick = 1.5; surge = 3.2; boost = 1; shake = .25; bonus = (bonus || 0) + 50; flameMats.forEach(m => m.color.set(0xffc928)); burst(); }
+  // Golden wreath: a 360-degree aileron roll about the direction of flight, plus a speed surge
+  function startTrick() { AU.gold(); trick = 1.1; rollDir = tx - px > .3 ? -1 : 1; surge = appr ? 0 : 3.2; boost = 1; shake = .2; bonus = (bonus || 0) + 50; if (!appr) flameMats.forEach(m => m.color.set(0xffc928)); burst(); showBanner("Aileron roll +50"); }
+  // ---------- Tutorial (practice flight before the real one; nothing is scored) ----------
+  const STEER = ["a", "d", "arrowleft", "arrowright"], PITCH = ["w", "s", "arrowup", "arrowdown"];
+  const TUT = [
+    { txt: "Santa takes off from the St Richard's helipad", keys: [], lift: true },
+    { txt: "Steer left and right: \u2190 \u2192 or A D", keys: STEER, need: { l: .45, r: .45 } },
+    { txt: "Climb and dive: \u2191 \u2193 or W S", keys: PITCH, need: { u: .45, d: .45 } },
+    { txt: "Hold SPACE to boost", keys: [" "], need: { b: 1 } },
+    { txt: "Fly through the wreath", keys: STEER.concat(PITCH), spawn: "ring" },
+    { txt: "Golden wreath: aileron roll and a speed surge", keys: STEER.concat(PITCH), spawn: "gold" },
+    { txt: "Landing: line up over the H and dive \u2193 to touch down", keys: STEER.concat(PITCH), spawn: "pad" },
+    { txt: "Dodge pylons and gulls. Too low and you'll hear PULL UP", keys: STEER.concat(PITCH), spawn: "hazard", wait: 5 },
+    { txt: "Tutorial complete. Real flight starting\u2026", keys: [], wait: 2.2, end: true }
+  ];
+  function tutEnter(i) {
+    tut.i = i; tut.t = 0; tut.l = tut.r = tut.u = tut.d = tut.b = 0; tut.retry = 0; tut.after = 0; const st = TUT[i];
+    $("tstep").textContent = i < TUT.length - 1 ? "Tutorial \u00b7 step " + (i + 1) + " of " + (TUT.length - 1) : "Tutorial"; $("ttxt").textContent = st.txt; $("tbar").style.width = "0%";
+    keyEls.forEach(el => el.classList.toggle("hl", st.keys.indexOf(el.dataset.k) >= 0));
+    if (st.spawn === "ring") add(ring(), rnd(-6, 6), rnd(5, 9), -150).userData.tut = true;
+    else if (st.spawn === "gold") add(goldRing(), rnd(-5, 5), rnd(6, 9), -150).userData.tut = true;
+    else if (st.spawn === "pad") add(practicePad(), rnd(-6, 6), 0, -300);
+    else if (st.spawn === "hazard") { const gap = 1 + Math.floor(Math.random() * 4); for (let k = 0; k < 6; k++) if (k !== gap) add(pylon(11), -12.5 + k * 5, 0, -170); for (let k = 0; k < 3; k++) add(gull(), rnd(-12, 12), rnd(4, 10), -260 - k * 10); }
+  }
+  const tutNext = () => { $("tbar").style.width = "100%"; if (tut) tut.after = .5; };
+  const tutRetry = msg => { showBanner(msg || "Missed. Have another go"); if (tut) tut.retry = .7; };
+  function tutTick(dt, kx, ky) {
+    const st = TUT[tut.i]; tut.t += dt;
+    if (tut.after > 0) { tut.after -= dt; if (tut.after <= 0) { if (tut.i + 1 < TUT.length) tutEnter(tut.i + 1); } return; }
+    if (tut.retry > 0) { tut.retry -= dt; if (tut.retry <= 0) tutEnter(tut.i); return; }
+    if (st.lift) { if (!ldg && tut.t > 1) tutNext(); }
+    else if (st.need) { if (kx < 0) tut.l += dt; if (kx > 0) tut.r += dt; if (ky > 0) tut.u += dt; if (ky < 0) tut.d += dt; if (boosting) tut.b += dt;
+      let f = 0, n = 0; for (const k in st.need) { f += Math.min(1, tut[k] / st.need[k]); n++; } $("tbar").style.width = Math.round(f / n * 100) + "%"; if (f / n >= 1) tutNext(); }
+    else if (st.wait) { $("tbar").style.width = Math.min(100, tut.t / st.wait * 100) + "%"; if (tut.t >= st.wait) { if (st.end) startReal(); else tutNext(); } }
+  }
   let last = performance.now(), lapD = 0, locNow = "";
   function frame(now) {
     if (dead) return; raf = requestAnimationFrame(frame);
@@ -479,40 +676,58 @@ function build() {
     const run = running && alive;
     if (run) {
       const kx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0), ky = (keys.arrowup || keys.w ? 1 : 0) - (keys.arrowdown || keys.s ? 1 : 0);
-      if (kx || ky) { tx = Math.max(-BX, Math.min(BX, tx + kx * dt * 20)); ty = Math.max(BYMIN, Math.min(BYMAX, ty + ky * dt * 11)); }
+      if ((kx || ky) && !ldg) { tx = Math.max(-BX, Math.min(BX, tx + kx * dt * 20)); ty = Math.max(BYMIN, Math.min(BYMAX, ty + ky * dt * 11)); }
       let target = 30 + Math.min(22, dist / 60);
-      if (surge > 0) { target += 34; surge -= dt; if (surge <= 0) flameMats.forEach(m => m.color.set(0xffe08a)); } else if (boosting && boost > 0) { target += 22; boost = Math.max(0, boost - dt * .3); } else if (!boosting) boost = Math.min(1, boost + dt * .03);
-      speed += (target - speed) * Math.min(1, dt * 1.5);
-      dist += speed * dt; nextAt -= speed * dt; lapD = dist - lapOff;
-      if (lapD >= LAP) { lapOff += LAP; lapD -= LAP; li = 0; pi = 0; lapNo++; }
-      while (li < TL.length && lapD >= TL[li].at - SPZ) { const e = TL[li++]; e.fn(-(e.at - lapD)); }
-      while (pi < PASS.length && lapD >= PASS[pi].at) { const p = PASS[pi++]; showBanner(p.text + (p.at === 0 && lapNo > 1 ? " \u00b7 lap " + lapNo : "")); if (p.bonus) bonus = (bonus || 0) + p.bonus; }
-      if (nextAt <= 0) { spawn(lapD); nextAt = 38 + Math.random() * 16 - Math.min(16, dist / 150); }
-      let ln = LOC[0][1]; LOC.forEach(l => { if (lapD >= l[0]) ln = l[1]; }); if (ln !== locNow) { locNow = ln; locEl.textContent = ln; }
-      rdot.style.left = (lapD / LAP * 100) + "%";
-      score = Math.floor(dist / 4) + (bonus || 0); scEl.textContent = score; alEl.textContent = Math.floor(dist);
+      if (ldg) {
+        // touchdown: stop on the pad, deliver, then lift straight up before flying on
+        ldg.t += dt;
+        if (ldg.stage === "stop") { ty = ldg.y + 1.05; tx += (ldg.cx - tx) * Math.min(1, dt * 3); speed = Math.max(0, speed - dt * 40);
+          if (speed <= 0) { ldg.stage = "hold"; ldg.t = 0; AU.bonus(); if (ldg.pts) bonus = (bonus || 0) + ldg.pts; showBanner(tut ? "Lovely landing!" : "Landed on " + ldg.name + " +" + ldg.pts + " \u00b7 presents delivered"); } }
+        else if (ldg.stage === "hold") { speed = 0; if (ldg.t > (tut ? 1 : 1.6)) { ldg.stage = "lift"; ldg.t = 0; ty = ldg.y + 6.5; invul = Math.max(invul, 1.6); AU.boost(); } }
+        else { speed = 0; if (ldg.t > .6) { const was = ldg; ldg = null; if (tut && was.tut) tutNext(); } }
+      } else {
+        if (appr) { target = 24; surge = 0; } else if (surge > 0) { target += 34; surge -= dt; if (surge <= 0) flameMats.forEach(m => m.color.set(0xffe08a)); }
+        if (!appr && surge <= 0) { if (boosting && boost > 0) { target += 22; boost = Math.max(0, boost - dt * .3); } else if (!boosting) boost = Math.min(1, boost + dt * .03); }
+        speed += (target - speed) * Math.min(1, dt * (appr ? 2.5 : 1.5));
+      }
+      if (tut) { tutTick(dt, kx, ky); scEl.textContent = "Practice"; }
+      else {
+        dist += speed * dt; nextAt -= speed * dt; lapD = dist - lapOff;
+        if (lapD >= LAP) { lapOff += LAP; lapD -= LAP; pi = 0; lapNo++; }
+        spawnTL();
+        while (pi < PASS.length && lapD >= PASS[pi].at) { const p = PASS[pi++]; showBanner(p.text + (p.at === 0 && lapNo > 1 ? " \u00b7 lap " + lapNo : "")); if (p.bonus) bonus = (bonus || 0) + p.bonus; }
+        if (nextAt <= 0) { spawn(lapD); nextAt = 38 + Math.random() * 16 - Math.min(16, dist / 150); }
+        let ln = LOC[0][1]; LOC.forEach(l => { if (lapD >= l[0]) ln = l[1]; }); if (ln !== locNow) { locNow = ln; locEl.textContent = ln; }
+        rdot.style.left = (lapD / LAP * 100) + "%";
+        score = Math.floor(dist / 4) + (bonus || 0); scEl.textContent = score; alEl.textContent = Math.floor(dist);
+      }
+      // landing guidance
+      if (appr && !ldg) { const p = appr.p, cx = appr.o.position.x + (p.x0 + p.x1) / 2, ex = cx - px, ey = p.y + 1.4 - py;
+        const arr = (ex < -1.5 ? "\u2190" : ex > 1.5 ? "\u2192" : "") + (ey < -.8 ? "\u2193" : ey > 1.6 ? "\u2191" : "");
+        landEl.innerHTML = "LAND ON " + esc(p.name).toUpperCase() + "<em>" + (arr || "\u2713") + "</em>"; landEl.style.display = "block"; }
+      else if (ldg) { landEl.innerHTML = ldg.stage === "lift" ? "TAKE OFF" : "TOUCHDOWN"; landEl.style.display = "block"; }
+      else landEl.style.display = "none";
     }
-    const mv = run ? speed : running ? Math.max(0, speed - dt * 40) : 12;
+    const mv = run ? speed : running ? Math.max(0, speed - dt * 40) : 0;
     boEl.style.width = Math.round(boost * 100) + "%";
-    segs.forEach(s => { s.position.z += mv * dt; s.userData.cars.forEach(c => { c.position.z += c.userData.v * dt; }); if (s.position.z > 40 + SEG) { s.position.z -= SEG * 4; s.userData.cars.forEach(c => { c.position.z = c.userData.z0; }); } });
+    segs.forEach(s => { s.position.z += mv * dt; s.userData.cars.forEach(c => { c.position.z += c.userData.v * dt; }); if (s.position.z > 40 + SEG) { s.position.z -= SEG * 4; s.userData.cars.forEach(c => { c.position.z = c.userData.z0; }); setMode(s); } });
     clouds.forEach(c => { c.position.z += mv * dt * .5; if (c.position.z > 40) { c.position.z = -280; c.position.x = (Math.random() - .5) * 220; } });
     seaT.offset.y += mv * dt / 11.25;
     // player
-    px += (tx - px) * Math.min(1, dt * 7); py += (ty - py) * Math.min(1, dt * 7); gpws(dt, py < 2.3, running && alive);
+    px += (tx - px) * Math.min(1, dt * 7); py += (ty - py) * Math.min(1, dt * 7); gpws(dt, py < 2.3 && !appr && !ldg, running && alive);
     const vx = (tx - px), vy = (ty - py);
-    player.position.set(px, py + Math.sin(t * 3) * .12, 0);
+    player.position.set(px, py + (ldg || !running ? 0 : Math.sin(t * 3) * .12), 0);
     robot.rotation.z = -vx * .09; player.rotation.x = vy * .05; player.rotation.z = -vx * .05;
     head.rotation.y = Math.sin(t * .9) * .12; head.rotation.x = Math.sin(t * 1.3) * .06;
     aL.up.rotation.x = 1.15 + Math.sin(t * 7) * .25; aR.up.rotation.x = 1.15 + Math.sin(t * 7 + .6) * .25;
     const bo = (surge > 0 || (boosting && boost > 0)) && run; AU.fly(mv, bo, run); if (bo && !boWas) AU.boost(); boWas = bo; flames.forEach((f, i) => { const k = (bo ? 1.7 : 1) * (1 + Math.sin(t * 40 + i) * .12 + Math.random() * .1); f.scale.set(1, k, 1); }); jetL.intensity = (bo ? 2.6 : 1.4) + Math.random() * .4;
-    if (trick > 0) { trick = Math.max(0, trick - dt); const k = 1 - trick / 1.5, ease = x => x < .5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
-      trickG.rotation.x = -Math.PI * 2 * ease(Math.min(1, k / .55));
-      trickG.rotation.y = k > .4 ? Math.PI * 2 * ease(Math.min(1, (k - .4) / .6)) : 0;
-      if (trick === 0) trickG.rotation.set(0, 0, 0); }
+    if (trick > 0) { trick = Math.max(0, trick - dt); const k = 1 - trick / 1.1, e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+      trickG.rotation.set(0, 0, rollDir * Math.PI * 2 * e); if (trick === 0) trickG.rotation.set(0, 0, 0); }
     if (sparks) { sparks.age += dt; const pa = sparks.p.geometry.attributes.position.array; sparks.vel.forEach((v, i) => { pa[i * 3] += v[0] * dt; pa[i * 3 + 1] += v[1] * dt; pa[i * 3 + 2] += v[2] * dt + mv * dt; v[1] -= 6 * dt; }); sparks.p.geometry.attributes.position.needsUpdate = true; sparks.p.material.opacity = Math.max(0, 1 - sparks.age); if (sparks.age >= 1) { scene.remove(sparks.p); sparks = null; } }
     if (!alive) { player.rotation.z += dt * 4; player.position.y = Math.max(.8, player.position.y - dt * 8); }
     invul = Math.max(0, invul - dt); robot.visible = invul > 0 ? Math.floor(t * 18) % 2 === 0 : true; shield.material.opacity = invul > 0 ? .18 : 0;
     // things
+    let apprNext = null;
     for (let i = things.length - 1; i >= 0; i--) {
       const o = things[i], u = o.userData; o.position.z += mv * dt;
       if (u.kind === "ring") o.rotation.z += dt * 1.2; else if (u.kind === "gold") o.rotation.z += dt * 1.6; else if (u.kind === "cap") { o.rotation.y += dt * 3; o.rotation.z += dt * 1.5; } else if (u.kind === "heart") o.rotation.y += dt * 2.5;
@@ -522,19 +737,25 @@ function build() {
       if (o.position.z - (u.D || 0) / 2 > 14) { scene.remove(o); things.splice(i, 1); continue; }
       if (!run) continue;
       const dx = o.position.x - px, dy = o.position.y - py, dz = Math.abs(o.position.z);
-      if (u.kind === "ring") { if (dz < 1.2 && !u.done) { u.done = true; if (Math.hypot(dx, dy) < 2.4) { combo++; bonus = (bonus || 0) + 10 + Math.min(combo, 10) * 5; mRing.emissiveIntensity = 3; setTimeout(() => mRing.emissiveIntensity = 1.3, 150); AU.ring(combo); scene.remove(o); things.splice(i, 1); } else { combo = 0; AU.miss(); } } }
-      else if (u.kind === "gold") { if (dz < 1.4 && !u.done) { u.done = true; if (Math.hypot(dx, dy) < 3.3) { startTrick(); scene.remove(o); things.splice(i, 1); } } }
+      if (u.kind === "ring") { if (dz < 1.2 && !u.done) { u.done = true; if (Math.hypot(dx, dy) < 2.4) { combo++; bonus = (bonus || 0) + 10 + Math.min(combo, 10) * 5; mRing.emissiveIntensity = 3; setTimeout(() => mRing.emissiveIntensity = 1.3, 150); AU.ring(combo); scene.remove(o); things.splice(i, 1); if (u.tut) { showBanner("Great, through the wreath!"); tutNext(); } } else { combo = 0; AU.miss(); if (u.tut) tutRetry(); } } }
+      else if (u.kind === "gold") { if (dz < 1.4 && !u.done) { u.done = true; if (Math.hypot(dx, dy) < 3.3) { startTrick(); scene.remove(o); things.splice(i, 1); if (u.tut) { tutNext(); tut.after = 1.3; } } else if (u.tut) tutRetry(); } }
       else if (u.kind === "cap") { if (dz < 1.4 && Math.hypot(dx, dy) < 1.8) { boost = Math.min(1, boost + .4); bonus = (bonus || 0) + 15; AU.cap(); scene.remove(o); things.splice(i, 1); } }
       else if (u.kind === "heart") { if (dz < 1.4 && Math.hypot(dx, dy) < 1.8) { hearts = Math.min(3, hearts + 1); heartsTxt(); AU.heart(); scene.remove(o); things.splice(i, 1); } }
       else if (u.kind === "turb") { if (dz < 1.7) { if (Math.abs(dx) < 1.3 && py < u.h + .4) hurt(); else if (Math.hypot(dx, dy - u.h) < 3.3) hurt(); } }
       else if (u.kind === "gull") { if (dz < 1.5 && Math.hypot(dx, dy * 1.5) < 2.0) hurt(); }
       else if (u.kind === "lm") {
         const lz = -o.position.z;
+        if (u.pad && !u.pad.done) { const p = u.pad, x0 = o.position.x + p.x0, x1 = o.position.x + p.x1;
+          if (lz > p.z1) { if (lz < p.z1 + 340 && !ldg) apprNext = { p, o }; }
+          else if (lz >= p.z0 + p.stop) { if (!ldg) { apprNext = { p, o }; if (px > x0 && px < x1 && py < p.y + 2.6 && py > p.y - .5) { p.done = true; apprNext = null; ldg = { stage: "stop", t: 0, y: p.y, cx: Math.max(x0 + 1, Math.min(x1 - 1, px)), pts: p.pts, name: p.name, tut: p.tut }; AU.cap(); combo = 0; } } }
+          else { p.done = true; AU.miss(); if (p.tut) tutRetry("Missed the pad. Line up and dive \u2193 sooner"); else showBanner("Missed the landing at " + p.name + " \u00b7 no bonus"); } }
+        if (ldg) continue;
         for (const b of u.boxes) { if (lz > b.z0 - .8 && lz < b.z1 + .8 && px > b.x0 - .8 && px < b.x1 + .8 && py > b.y0 - .7 && py < b.y1 + .7) { hurt(); break; } }
         if (u.under && !u.underDone && lz > u.under.z0 && lz < u.under.z1 && px > u.under.x0 && px < u.under.x1 && py < 3.0) { u.underDone = true; AU.bonus(); bonus += u.under.pts; showBanner("Under the pier +" + u.under.pts); }
         if (u.circs) for (const c of u.circs) { if (Math.abs(lz) < c.zh + .8 && Math.hypot(px - c.x, py - c.y) < c.r + .5) { hurt(); break; } }
       }
     }
+    appr = run ? apprNext : null;
     // streaks
     const sp = stG.attributes.position.array, len = 2 + mv * .1;
     stI.forEach((s, i) => { s.z += mv * dt * 1.4; if (s.z > 12) { s.z = -80; s.x = (Math.random() - .5) * 70; s.y = Math.random() * 18; } sp[i * 6] = s.x; sp[i * 6 + 1] = s.y; sp[i * 6 + 2] = s.z; sp[i * 6 + 3] = s.x; sp[i * 6 + 4] = s.y; sp[i * 6 + 5] = s.z - len; });
@@ -545,17 +766,23 @@ function build() {
     // camera
     const fov = 65 + (bo ? 12 : 0) + (surge > 0 ? 8 : 0) + Math.max(0, mv - 30) * .2; cam.fov += (fov - cam.fov) * Math.min(1, dt * 4); cam.updateProjectionMatrix();
     shake = Math.max(0, shake - dt);
-    cam.position.set(px * .55 + (shake ? (Math.random() - .5) * shake : 0), py * .55 + 5.2 + (shake ? (Math.random() - .5) * shake : 0), 12);
-    cam.lookAt(px * .5, py * .6 + .2, -14);
+    // chase camera: directly behind Santa, a little above so the reindeer team shows over the sleigh
+    cam.position.set(px * .9 + (shake ? (Math.random() - .5) * shake : 0), py * .7 + 6.4 + (shake ? (Math.random() - .5) * shake : 0), 12.5);
+    cam.lookAt(px * .9, py * .8 - .6, -16);
     sky.position.x = cam.position.x;
     renderer.render(scene, cam);
   }
-  window.__xmasLive = () => (running && alive ? score : 0);
-  $("go").onclick = () => { AU.init(); bonus = 0; reset(); running = true; ov.hidden = true; try { window.__xmasGameStart && window.__xmasGameStart("flight"); } catch (e) {} };
+  window.__xmasLive = () => (running && alive && !tut ? score : 0);
+  function takeOff() { ldg = { stage: "lift", t: 0, y: REST - 1.05 }; ty = 6.6; }
+  // The real flight (and the competition clock) starts here.
+  function startReal() { AU.init(); tut = null; tutEl.hidden = true; keyEls.forEach(el => el.classList.remove("hl")); bonus = 0; things.forEach(o => scene.remove(o)); things.length = 0; reset(); running = true; ov.hidden = true; takeOff();
+    try { window.__xmasGameStart && window.__xmasGameStart("flight"); } catch (e) {} }
+  function startTut() { AU.init(); bonus = 0; reset(); running = true; ov.hidden = true; tut = {}; tutEl.hidden = false; takeOff(); tutEnter(0); scEl.textContent = "Practice"; }
+  $("go").onclick = startReal; tutGo.onclick = startTut;
   loadBoard();
   reset(); last = performance.now(); raf = requestAnimationFrame(frame);
   return function close() {
-    dead = true; AU.close(); try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} cancelAnimationFrame(raf); clearTimeout(bt); clearTimeout(hold); offs.forEach(f => f());
+    dead = true; AU.close(); try { window.speechSynthesis && speechSynthesis.cancel(); } catch (e) {} cancelAnimationFrame(raf); clearTimeout(bt); offs.forEach(f => f());
     try { scene.traverse(o => { if (o.geometry) o.geometry.dispose(); if (o.material) (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => { if (m.map) m.map.dispose(); m.dispose(); }); }); renderer.dispose(); renderer.forceContextLoss(); } catch (e) {}
   };
 }

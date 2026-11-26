@@ -70,6 +70,7 @@
       <button role="tab" id="tEvent" aria-controls="pEvent" aria-selected="true" type="button">Event</button>
       <button role="tab" id="tEntries" aria-controls="pEntries" aria-selected="false" type="button" tabindex="-1">Entries and scores</button>
       <button role="tab" id="tQuiz" aria-controls="pQuiz" aria-selected="false" type="button" tabindex="-1">Quiz questions</button>
+      <button role="tab" id="tTest" aria-controls="pTest" aria-selected="false" type="button" tabindex="-1">Test the games</button>
       <button role="tab" id="tLog" aria-controls="pLog" aria-selected="false" type="button" tabindex="-1">Activity log</button>
     </div>
 
@@ -180,6 +181,18 @@
       <p class="msg" id="qlMsg" role="alert"></p>
     </section>
 
+    <!-- Test the games (admin only, nothing saved) -->
+    <section id="pTest" role="tabpanel" aria-labelledby="tTest" hidden>
+      <p class="qnote">Play any round as a player would, with your round length. Test plays aren't saved: no access code, no entry, no email, and nothing goes on the leaderboard. Works whether the competition is open or closed.</p>
+      <div class="cards">
+        <article class="card"><div class="body"><span class="tag">Round</span><h3>Reindeer Flight</h3><p>Includes the tutorial. The clock starts at take-off. Keyboard only.</p><button class="btn" type="button" data-test="flight">Play test</button></div></article>
+        <article class="card"><div class="body"><span class="tag">Round</span><h3>Grotto Dash</h3><p>The clock starts when you press start in the game.</p><button class="btn" type="button" data-test="grotto">Play test</button></div></article>
+        <article class="card"><div class="body"><span class="tag">Round</span><h3>The Christmas Quiz</h3><p>Every question that's in the quiz, in order, with the options shuffled as players see them.</p><button class="btn" type="button" data-test="quiz">Play test</button></div></article>
+      </div>
+      <p class="okmsg" id="testMsg" role="status" style="margin-top:16px"></p>
+      <section class="panel" id="testQuiz" hidden aria-live="polite" style="margin-top:20px;max-width:none"></section>
+    </section>
+
     <!-- Log -->
     <section id="pLog" role="tabpanel" aria-labelledby="tLog" hidden>
       <div class="box"><h2>Recent admin changes</h2><ul class="log" id="log"></ul></div>
@@ -209,6 +222,7 @@
   </dialog>
 </main>
 
+<div class="timer hidden" id="tTimer" role="timer" aria-live="off"><span class="lbl">Test &middot; time left</span><span id="tLeft">5:00</span></div>
 <script src="vendor/supabase-js-2.45.4.min.js"></script>
 <script src="config.js"></script>
 <script>
@@ -257,7 +271,7 @@
   $("signOut").addEventListener("click", async () => { await db.auth.signOut(); location.reload(); });
 
   // ---------- Tabs ----------
-  const tabs = [["tEvent", "pEvent"], ["tEntries", "pEntries"], ["tQuiz", "pQuiz"], ["tLog", "pLog"]];
+  const tabs = [["tEvent", "pEvent"], ["tEntries", "pEntries"], ["tQuiz", "pQuiz"], ["tTest", "pTest"], ["tLog", "pLog"]];
   function selectTab(id) {
     tabs.forEach(([t, p]) => { const on = t === id; $(t).setAttribute("aria-selected", on); $(t).tabIndex = on ? 0 : -1; $(p).hidden = !on; });
     if (id === "tEntries") loadEntries();
@@ -567,6 +581,60 @@
     const csv = "Question,Option 1,Option 2,Option 3,Option 4,Correct (1-4),Points\r\n\"Which vitamin is made in the skin in sunlight?\",Vitamin A,Vitamin C,Vitamin D,Vitamin K,3,100\r\n";
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" })); a.download = "quiz-questions-template.csv"; document.body.appendChild(a); a.click(); a.remove();
   });
+
+  // ---------- Test the games (runs entirely in this page; nothing is sent to the player functions) ----------
+  const TEST = { flight: { file: "games/reindeer-flight.js", global: "XmasSleigh" }, grotto: { file: "games/grotto-dash.js", global: "XmasGrotto" } };
+  let tTimerId = null, tEnd = 0, tGame = null;
+  // the games look for these: give them a do-nothing score service so test plays are never submitted
+  window.sb = { rpc: () => Promise.resolve({ data: [], error: null }) };
+  const roundSecs = () => (settings && settings.round_seconds) || 300;
+  function tStop() { clearInterval(tTimerId); tTimerId = null; $("tTimer").classList.add("hidden"); $("tTimer").classList.remove("warn"); }
+  function tStart(onEnd) {
+    tStop(); tEnd = performance.now() + roundSecs() * 1000; $("tTimer").classList.remove("hidden");
+    const step = () => { const left = Math.max(0, Math.ceil((tEnd - performance.now()) / 1000)); $("tLeft").textContent = Math.floor(left / 60) + ":" + String(left % 60).padStart(2, "0");
+      $("tTimer").classList.toggle("warn", left <= 30); if (left <= 0) { tStop(); onEnd(); } };
+    step(); tTimerId = setInterval(step, 250);
+  }
+  const loadScript = src => new Promise((ok, fail) => { const x = document.createElement("script"); x.src = src; x.onload = ok; x.onerror = () => fail(new Error("Could not load " + src)); document.head.appendChild(x); });
+  async function testGame(key) {
+    const g = TEST[key]; $("testMsg").textContent = ""; $("testQuiz").hidden = true;
+    try { if (!window[g.global]) await loadScript(g.file); } catch (e) { $("testMsg").textContent = e.message; return; }
+    tGame = key; let best = 0;
+    const live = () => { try { return key === "grotto" ? window.XmasGrotto.live() || 0 : (window.__xmasLive ? window.__xmasLive() || 0 : 0); } catch (e) { return 0; } };
+    const timeUp = () => { best = Math.max(best, live()); try { window[g.global].close(); } catch (e) {} tGame = null;
+      $("testMsg").textContent = "Time's up. Test score: " + best.toLocaleString("en-GB") + " (not saved)."; };
+    // a real attempt starting (take-off, or start in Grotto Dash) starts the test clock once
+    window.__xmasGameStart = () => { if (!tTimerId && tGame === key) tStart(timeUp); };
+    const watch = setInterval(() => { best = Math.max(best, live());
+      if (!window.__pdOpen) { clearInterval(watch); if (tGame === key) { tGame = null; tStop(); $("testMsg").textContent = "Test finished. Best score this test: " + best.toLocaleString("en-GB") + " (not saved)."; } } }, 400);
+    window[g.global].open();
+  }
+  async function testQuiz() {
+    const box = $("testQuiz"); $("testMsg").textContent = "";
+    let qs; try { qs = (await rpc("admin_list_questions") || []).filter(q => q.active); } catch (e) { $("testMsg").textContent = e.message; return; }
+    box.hidden = false; box.textContent = "";
+    const h = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
+    if (!qs.length) { box.append(h("h1", "", "The Christmas Quiz"), h("p", "", "No questions are in the quiz yet. Add some in the Quiz questions tab.")); return; }
+    let i = 0, right = 0, pts = 0, done = false;
+    const finish = () => { if (done) return; done = true; tStop(); box.textContent = "";
+      const close = h("button", "btn", "Close"); close.type = "button"; close.addEventListener("click", () => { box.hidden = true; });
+      box.append(h("h1", "", "Test quiz finished"), h("p", "", right + " of " + qs.length + " right, " + pts.toLocaleString("en-GB") + " points (not saved)."), (() => { const a = h("div", "actions"); a.appendChild(close); return a; })()); close.focus(); };
+    tStart(finish);
+    const show = () => {
+      if (done) return; const q = qs[i]; box.textContent = "";
+      const order = [0, 1, 2, 3].sort(() => Math.random() - .5), fb = h("p", "feedback"), next = h("div", "actions"); fb.setAttribute("role", "status");
+      const opts = order.map(k => { const b = h("button", "opt", q.options[k]); b.type = "button"; b.addEventListener("click", () => {
+        opts.forEach(x => { x.disabled = true; }); const ok = k === q.correct_index; if (ok) { right++; pts += q.points; } else b.classList.add("wrong");
+        opts[order.indexOf(q.correct_index)].classList.add("right");
+        fb.className = "feedback " + (ok ? "ok" : "no"); fb.textContent = ok ? "Correct!" : "Not quite. The answer was: " + q.options[q.correct_index];
+        const last = i === qs.length - 1, nb = h("button", "btn", last ? "Finish the quiz" : "Next question"); nb.type = "button";
+        nb.addEventListener("click", () => { if (last) finish(); else { i++; show(); } }); next.appendChild(nb); nb.focus(); }); return b; });
+      const head = h("div", "qhead"); head.append(h("span", "", "Test · question " + (i + 1) + " of " + qs.length), h("span", "", q.points + " points"));
+      const o = h("div", "opts"); o.append(...opts); box.append(head, h("h1", "qtext", q.question), o, fb, next); opts[0].focus();
+    };
+    show(); box.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  document.querySelectorAll("[data-test]").forEach(b => b.addEventListener("click", () => (b.dataset.test === "quiz" ? testQuiz() : testGame(b.dataset.test))));
 
   // ---------- Log ----------
   const LABEL = { settings_saved: "Event settings saved", entry_updated: "Entry edited", entry_deleted: "Entry deleted", all_entries_deleted: "All entries deleted", question_added: "Question added", question_updated: "Question edited", question_deleted: "Question deleted" };
