@@ -240,3 +240,121 @@ dialog h2 { margin: 0; font-size: 22px; color: var(--white); }
 .acts button:disabled { opacity: .35; cursor: default; }
 .qrow { display: flex; gap: 22px; align-items: flex-end; flex-wrap: wrap; }
 .qrow .field input { width: 130px; }
+
+/* Quiz: per-question countdown and picture questions */
+.qtime { display: flex; align-items: center; gap: 12px; }
+.qtime .track { flex: 1; height: 10px; border-radius: 6px; background: rgba(255,255,255,.1); overflow: hidden; }
+.qtime .track i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #12a0ad, #4caf50); border-radius: 6px; transition: width .1s linear; }
+.qtime .qsecs { min-width: 3ch; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--white); }
+.qtime.warn .track i { background: linear-gradient(90deg, #e5006e, #f2c14e); }
+.qtime.warn .qsecs { color: var(--gold); }
+.pic { position: relative; width: 100%; aspect-ratio: 16 / 10; border-radius: 12px; overflow: hidden; background: #0b1a40; border: 1px solid var(--line2); }
+.pic canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.pic .covers { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(4, 1fr); }
+.pic .covers span { display: flex; align-items: center; justify-content: center; font-size: clamp(16px, 3vw, 28px); font-weight: 800; color: rgba(255,255,255,.85);
+  background: repeating-linear-gradient(45deg, #12306b 0 10px, #183d85 10px 20px); box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+  transition: opacity .6s ease, transform .6s ease; }
+.pic .covers span:nth-child(odd) { background: repeating-linear-gradient(-45deg, #a3005a 0 10px, #c0006a 10px 20px); }
+.pic .covers span.gone { opacity: 0; transform: scale(.6) rotate(8deg); }
+@media (prefers-reduced-motion: reduce) { .pic .covers span { transition: none; } }
+
+/* Admin: question type and picture preview */
+.qkind { border: 0; padding: 0; margin: 0 0 4px; display: flex; gap: 22px; flex-wrap: wrap; }
+.qkind legend { font-size: 14px; font-weight: 700; padding: 0; margin-bottom: 2px; }
+.qkind .qchk { min-height: 40px; }
+.qprev { margin: 6px 0 8px; }
+.qprev .qgrid { position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(to right, rgba(255,255,255,.35) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,.35) 1px, transparent 1px); background-size: 20% 25%; }
+.qprev .qempty { position: absolute; inset: 0; margin: 0; display: flex; align-items: center; justify-content: center; color: var(--muted); font-weight: 600; }
+.qprev .qempty[hidden] { display: none; }
+.qhint { font-size: 13px; color: var(--soft); margin: 0 0 12px; }
+.board td .qmeta { display: block; font-size: 12px; color: var(--teal-lt); font-weight: 700; margin-top: 2px; }
+
+/* Homepage sponsor line */
+.sponsor { display: block; width: fit-content; max-width: 100%; margin: 4px 0 14px; padding: 6px 14px; border-radius: 999px; border: 1px solid rgba(242,193,78,.55); background: rgba(242,193,78,.12); color: var(--gold); font-weight: 700; font-size: 15px; letter-spacing: .01em; }
+
+
+/* ---------- Christmas homepage ---------- */
+.xmas { --xred: #e5334b; --xgreen: #2e9b5b; --xgold: #f2c14e; }
+.xmas .hero { background: radial-gradient(120% 90% at 80% 0%, #24407a 0%, #1a2744 45%, #121c36 100%); border-bottom: 0; }
+.xmas .hero::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(60% 40% at 15% 10%, rgba(63, 191, 106, .14), transparent 70%), radial-gradient(50% 35% at 90% 30%, rgba(229, 51, 75, .10), transparent 70%); }
+.xmas .hero .stars { position: absolute; inset: 0; pointer-events: none;
+  background-image: radial-gradient(1.6px 1.6px at 12% 18%, #fff, transparent), radial-gradient(1.2px 1.2px at 28% 42%, #fff, transparent), radial-gradient(1.8px 1.8px at 44% 12%, #fff, transparent),
+    radial-gradient(1.2px 1.2px at 63% 30%, #fff, transparent), radial-gradient(1.6px 1.6px at 77% 8%, #fff, transparent), radial-gradient(1.2px 1.2px at 88% 44%, #fff, transparent),
+    radial-gradient(1.4px 1.4px at 6% 60%, #fff, transparent), radial-gradient(1.2px 1.2px at 54% 56%, #fff, transparent), radial-gradient(1.6px 1.6px at 95% 66%, #fff, transparent);
+  opacity: .7; animation: xtwinkle 5s ease-in-out infinite alternate; }
+@keyframes xtwinkle { from { opacity: .45; } to { opacity: .85; } }
+
+/* fairy lights */
+.xmas .lights { position: absolute; left: 0; right: 0; top: 0; height: 64px; pointer-events: none; z-index: 2; }
+.xmas .lights .wire { position: absolute; inset: 0 0 auto 0; width: 100%; height: 46px; }
+.xmas .lights .wire path { fill: none; stroke: #0d1428; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.xmas .bulb { position: absolute; width: 11px; height: 17px; margin-left: -5.5px; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; animation: xglow 2.4s ease-in-out infinite; }
+.xmas .bulb::before { content: ""; position: absolute; left: 2px; top: -5px; width: 7px; height: 6px; border-radius: 2px; background: #3a4658; }
+.xmas .bulb.red { background: #ff4d63; color: #ff4d63; } .xmas .bulb.gold { background: #ffd25a; color: #ffd25a; }
+.xmas .bulb.green { background: #4fe08a; color: #4fe08a; } .xmas .bulb.blue { background: #7fd8ff; color: #7fd8ff; }
+@keyframes xglow { 0%, 100% { box-shadow: 0 0 6px 2px currentColor, 0 0 18px 4px currentColor; filter: brightness(1.1); } 50% { box-shadow: 0 0 2px 0 currentColor; filter: brightness(.6); } }
+@media (max-width: 640px) { .xmas .bulb:nth-child(3n of .bulb) { display: none; } }
+@media (max-width: 420px) { .xmas .count span { font-size: 10px; letter-spacing: .03em; } .xmas .count strong { font-size: 32px; } }
+
+/* layout: centred, with room for the lights and the snowdrift */
+.xmas .hero .wrap { padding-top: 104px; padding-bottom: 150px; justify-content: center; text-align: center; }
+.xmas .hero .copy { flex: 0 1 760px; align-items: center; }
+.xmas .hero .lead { margin-left: auto; margin-right: auto; }
+.xmas .hero .gate { width: 100%; text-align: left; }
+.xmas .eyebrow { margin: 0; font-size: 14px; font-weight: 800; letter-spacing: .22em; text-transform: uppercase; color: var(--xgold); }
+.xmas .eyebrow span { font-size: 12px; margin: 0 6px; }
+.xmas .hero h1 { text-shadow: 0 0 28px rgba(242, 193, 78, .28), 0 2px 0 rgba(0, 0, 0, .25); }
+.xmas .sponsor { display: inline-flex; align-items: center; gap: 8px; margin: 2px auto 6px; padding: 7px 16px 7px 10px; background: rgba(242, 193, 78, .14); }
+.xmas .sponsor .holly { width: 32px; height: 20px; flex: none; }
+
+/* the entry box: candy-cane trim */
+.xmas .gate { position: relative; overflow: hidden; padding-top: 30px; background: rgba(13, 20, 40, .82); border-color: rgba(242, 193, 78, .35); box-shadow: 0 20px 50px rgba(0, 0, 0, .35); }
+.xmas .gate::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 9px; background: repeating-linear-gradient(-45deg, var(--xred) 0 12px, #fff 12px 24px); }
+
+/* countdown tiles as baubles */
+.xmas .count div { position: relative; margin-top: 12px; border: 0; border-radius: 18px 18px 22px 22px; padding: 16px 6px 12px; overflow: visible;
+  background: radial-gradient(circle at 30% 25%, rgba(255, 255, 255, .35), transparent 38%), var(--bauble, #c0273f); box-shadow: inset 0 -8px 16px rgba(0, 0, 0, .25), 0 8px 18px rgba(0, 0, 0, .3); }
+.xmas .count div::before { content: ""; position: absolute; left: 50%; top: -10px; width: 22px; height: 11px; margin-left: -11px; border-radius: 3px 3px 1px 1px; background: linear-gradient(#ffe08a, #c9971f); }
+.xmas .count div::after { content: ""; position: absolute; left: 50%; top: -17px; width: 10px; height: 10px; margin-left: -6px; border: 2px solid #c9971f; border-radius: 50%; }
+.xmas .count div:nth-child(1) { --bauble: #c0273f; } .xmas .count div:nth-child(2) { --bauble: #1f8a4c; }
+.xmas .count div:nth-child(3) { --bauble: #b88a10; } .xmas .count div:nth-child(4) { --bauble: #1d6fa8; }
+.xmas .count strong { text-shadow: 0 2px 0 rgba(0, 0, 0, .25); }
+.xmas .count span { color: rgba(255, 255, 255, .85); }
+
+/* snowdrift along the bottom of the hero */
+.xmas .hero .drift { position: absolute; left: 0; right: 0; bottom: 4px; width: 100%; height: 90px; pointer-events: none; }
+
+/* leaderboard: gold, silver and bronze baubles for the top three */
+.xmas #leaderboard h2 .star { color: var(--xgold); text-shadow: 0 0 14px rgba(242, 193, 78, .6); }
+.xmas .board { border-color: rgba(242, 193, 78, .25); }
+.xmas .board tbody tr:nth-child(-n+3) .pos { position: relative; }
+.xmas .board tbody tr:nth-child(-n+3) .pos::before { content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -1px; border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #fff 0 12%, transparent 40%), var(--medal); box-shadow: 0 0 10px var(--medal); }
+.xmas .board tbody tr:nth-child(1) .pos { --medal: #f2c14e; } .xmas .board tbody tr:nth-child(2) .pos { --medal: #c9d3e6; } .xmas .board tbody tr:nth-child(3) .pos { --medal: #d08a4a; }
+
+@media (prefers-reduced-motion: reduce) { .xmas .bulb, .xmas .hero .stars { animation: none; } .xmas .bulb { box-shadow: 0 0 6px 2px currentColor; } }
+
+.snowfall { position: absolute; inset: 0; pointer-events: none; }
+
+/* stacking for the homepage hero */
+.xmas .hero .snow { z-index: 1; }
+.xmas .hero .wrap { z-index: 3; }
+
+/* Hospital sites line and prizes podium */
+.sites { margin: -4px 0 0; font-size: 17px; font-weight: 700; color: var(--white); letter-spacing: .01em; }
+.prizes { padding: 64px 0 8px; }
+.prizes h2 { margin: 0; font-size: clamp(28px, 4vw, 38px); font-weight: 800; color: var(--white); text-align: center; }
+.prizes .intro { margin: 6px 0 0; text-align: center; color: var(--gold); font-weight: 700; }
+.podium { list-style: none; margin: 30px auto 0; padding: 0; max-width: 900px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: end; }
+.podium li { position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; padding: 34px 16px 22px; border-radius: 16px 16px 8px 8px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .02)); border: 1px solid var(--line2); }
+.podium .p1 { min-height: 230px; border-color: rgba(242, 193, 78, .6); background: linear-gradient(180deg, rgba(242, 193, 78, .18), rgba(242, 193, 78, .03)); }
+.podium .p2 { min-height: 195px; }
+.podium .p3 { min-height: 170px; }
+.podium .medal { position: absolute; top: -26px; width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: 800; color: #1a2744;
+  background: radial-gradient(circle at 32% 30%, #fff 0 10%, transparent 42%), var(--medal); box-shadow: 0 6px 16px rgba(0, 0, 0, .35), 0 0 18px var(--medal); }
+.podium .p1 .medal { --medal: #f2c14e; width: 60px; height: 60px; top: -30px; } .podium .p2 .medal { --medal: #c9d3e6; } .podium .p3 .medal { --medal: #d08a4a; }
+.podium strong { font-size: 19px; color: var(--white); }
+.podium .what { font-size: 15px; color: var(--soft); overflow-wrap: anywhere; }
+@media (max-width: 600px) { .podium { grid-template-columns: minmax(0, 1fr); gap: 38px; } .podium .p1 { order: -1; } .podium li { min-height: 0 !important; } }

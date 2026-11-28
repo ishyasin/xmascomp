@@ -37,7 +37,7 @@ function sort(bin){
   if(good){S.ok++;S.mood="happy";S.moodT=.55;S.combo++;S.score+=10*Math.min(5,1+Math.floor(S.combo/5));S.done++;AU.ok(S.combo);
     if(S.done%10===0){S.lvl++;AU.tempo(S.lvl);S.banner=2.2;S.mood="happy";S.moodT=1.3;AU.level()}}
   else{S.bad++;S.strikes++;S.combo=0;S.mood="oops";S.moodT=.9;S.shake=.35;AU.bad();
-    if(S.strikes>=3)end("Wrong sacks","Three presents went to the wrong part of West Sussex.")}
+    if(S.strikes>=3)end("Wrong sacks","Three presents went in the wrong sacks.")}
 }
 function end(t,p){S.mode="over";AU.over();
   const acc=S.ok+S.bad?Math.round(S.ok/(S.ok+S.bad)*100):0;const nb=S.score>S.best;if(nb){S.best=S.score;try{localStorage.setItem("gdBest",S.best)}catch(e){}}
@@ -79,7 +79,7 @@ function room(){
   const lc=["#ff4d6d","#ffd34d","#5ad1ff","#7dff8a"];ctx.strokeStyle="#2c3a2a";ctx.lineWidth=1.5;ctx.beginPath();for(let x=0;x<=W;x+=4)ctx.lineTo(x,50+Math.sin(x/40)*6);ctx.stroke();
   for(let i=0;i<26;i++){const x=10+i*24.5,y=50+Math.sin(x/40)*6+5,on=((Math.floor(S.t*3)+i)%4)!==0;ctx.fillStyle=on?lc[i%4]:"#333";ctx.globalAlpha=on?1:.6;ctx.beginPath();ctx.ellipse(x,y,3.5,5,0,0,7);ctx.fill();ctx.globalAlpha=1}
   ctx.fillStyle="rgba(255,255,255,.7)";for(let i=0;i<40;i++){const sx=(i*97+S.t*14*(1+i%3))%W,sy=(i*53+S.t*(18+i%5*6))%110;ctx.beginPath();ctx.arc(sx,sy,1+(i%3)*.6,0,7);ctx.fill()}
-  text("SANTA'S GROTTO, WEST SUSSEX",20,98,"700 15px "+FN,"#ffd34d");
+  text("SANTA'S GROTTO",20,98,"700 15px "+FN,"#ffd34d");
   ctx.fillStyle="#0e1726";ctx.fillRect(0,236,W,H-236);ctx.fillStyle="#e8eef6";ctx.fillRect(0,234,W,4);
 }
 function belt(){
@@ -235,7 +235,7 @@ function open(){
   const st=document.createElement("style");st.id="ddStyle";st.textContent=CSS;document.head.appendChild(st);
   root=document.createElement("div");root.id="ddRoot";root.setAttribute("role","dialog");root.setAttribute("aria-modal","true");root.setAttribute("aria-label","Grotto Dash");
   root.innerHTML='<button class="ddx" type="button">Exit</button><button class="ddx dds" type="button">Sound on</button><div class="ddg"><canvas width="640" height="420"></canvas>'
-    +'<div class="ddo" id="ovStart"><h3>Grotto Dash</h3><p>Christmas Eve in West Sussex. Get every present into the right sleigh sack.</p><div class="edb" id="sBoard"></div><p class="hint">Press an arrow key</p></div>'
+    +'<div class="ddo" id="ovStart"><h3>Grotto Dash</h3><p>It&rsquo;s Christmas Eve. Get every present into the right sleigh sack.</p><div class="edb" id="sBoard"></div><p class="hint">Press an arrow key</p></div>'
     +'<div class="ddo" id="ovEnd" hidden><h3 id="eT"></h3><p id="eP"></p><div class="big" id="eS"></div><p id="eB"></p><div class="edb" id="eBoard"></div><p class="hint">Press an arrow key</p></div></div>';
   const prev=document.body.style.overflow;document.body.style.overflow="hidden";document.body.appendChild(root);root._prev=prev;root._st=st;
   cv=root.querySelector("canvas");ctx=cv.getContext("2d");dpr=Math.min(window.devicePixelRatio||1,2);cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);

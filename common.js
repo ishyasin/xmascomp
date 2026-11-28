@@ -29,6 +29,7 @@
     return {
       name: e.event_name, rounds: (e.rounds || []).filter(r => ROUNDS[r]), roundSeconds: e.round_seconds,
       startsAt: new Date(e.starts_at).getTime(), endsAt: new Date(e.ends_at).getTime(),
+      prizes: [e.prize_1 || "", e.prize_2 || "", e.prize_3 || ""], resultsPublic: !!e.results_public,
       now: () => Date.now() + skew
     };
   }
@@ -77,13 +78,46 @@
     catch (e) { renderBoard(table.tBodies[0], [], rounds); if (status) status.textContent = e.message; }
   }
 
+  // Snowfall drawn on a canvas: flakes of different sizes drift down and sway; a few big ones are six-armed crystals.
+  // n = flakes for an area of 1000 x 600 px. Colour from the CSS variable --snow on el (default white).
+  // Pauses when the tab is hidden or the snow is off screen; a still scene for reduced motion.
   function snow(el, n) {
-    if (!el) return;
-    for (let i = 0; i < n; i++) {
-      const f = document.createElement("i"), s = 2 + (i % 4);
-      f.style.cssText = "left:" + ((i * 37 + 11) % 100) + "%;top:" + (((i * 53 + 7) % 100) - 10) + "%;width:" + s + "px;height:" + s + "px;opacity:" + (0.25 + (i % 5) * 0.12) + ";animation-duration:" + (9 + (i % 7) * 2) + "s;animation-delay:-" + (i % 9) + "s";
-      el.appendChild(f);
+    if (!el || el.dataset.snow) return; el.dataset.snow = "1";
+    const c = document.createElement("canvas"); c.className = "snowfall"; c.setAttribute("aria-hidden", "true"); el.appendChild(c);
+    const ctx = c.getContext("2d"), still = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let W = 0, H = 0, flakes = [], raf = 0, last = 0, onScreen = true, colour = "#fff";
+    const flake = top => { const r = .7 + Math.pow(Math.random(), 2.2) * 3.6;
+      return { x: Math.random() * W, y: top ? -10 - Math.random() * 40 : Math.random() * H, r, vy: 16 + r * 13 + Math.random() * 10, a: 6 + r * 5, f: .4 + Math.random() * .9, p: Math.random() * 6.3,
+        o: Math.min(.95, .35 + r * .17), star: r > 3.2 && Math.random() < .6, spin: Math.random() * 6.3 }; };
+    function size() {
+      const dpr = Math.min(2, window.devicePixelRatio || 1); W = el.clientWidth; H = el.clientHeight;
+      c.width = Math.round(W * dpr); c.height = Math.round(H * dpr); c.style.width = W + "px"; c.style.height = H + "px"; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      const want = Math.max(20, Math.min(400, Math.round(n * W * H / 600000)));
+      while (flakes.length < want) flakes.push(flake(false)); flakes.length = want;
+      colour = getComputedStyle(el).getPropertyValue("--snow").trim() || "#fff";
     }
+    function draw(t) {
+      ctx.clearRect(0, 0, W, H); ctx.fillStyle = colour; ctx.strokeStyle = colour;
+      for (const f of flakes) {
+        const x = f.x + Math.sin(t * f.f + f.p) * f.a; ctx.globalAlpha = f.o;
+        if (f.star) { ctx.lineWidth = .9; ctx.save(); ctx.translate(x, f.y); ctx.rotate(f.spin + t * .3); ctx.beginPath();
+          for (let k = 0; k < 3; k++) { ctx.rotate(Math.PI / 3); ctx.moveTo(-f.r * 1.6, 0); ctx.lineTo(f.r * 1.6, 0); } ctx.stroke(); ctx.restore(); }
+        else { ctx.beginPath(); ctx.arc(x, f.y, f.r, 0, 6.2832); ctx.fill(); }
+      }
+      ctx.globalAlpha = 1;
+    }
+    function tick(now) {
+      raf = 0; if (document.hidden || !onScreen) return;
+      const dt = Math.min(.05, (now - (last || now)) / 1000); last = now;
+      for (const f of flakes) { f.y += f.vy * dt; if (f.y > H + 12) Object.assign(f, flake(true)); }
+      draw(now / 1000); raf = requestAnimationFrame(tick);
+    }
+    const go = () => { if (!still && !raf && !document.hidden && onScreen) { last = 0; raf = requestAnimationFrame(tick); } };
+    size(); draw(0); go();
+    window.addEventListener("resize", () => { size(); draw(performance.now() / 1000); });
+    document.addEventListener("visibilitychange", go);
+    if ("IntersectionObserver" in window) new IntersectionObserver(es => { onScreen = es[0].isIntersecting; go(); }).observe(el);
+    el.addEventListener("snow:refresh", () => { size(); draw(performance.now() / 1000); });
   }
 
   const fmtDate = t => new Date(t).toLocaleString("en-GB", { weekday: "long", day: "numeric", month: "long", hour: "2-digit", minute: "2-digit", timeZone: "Europe/London" });

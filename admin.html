@@ -11,11 +11,7 @@
 <body>
 <header class="top">
   <div class="wrap">
-    <a class="edg" href="index.html" aria-label="Back to the homepage">
-      <span class="mark">ED<span class="amp">&amp;</span>G<span class="tm">™</span></span>
-      <span class="name">Evolve Digital &amp; Governance</span>
-      <span class="rule"><span></span><span></span><span></span></span>
-    </a>
+    <strong style="color:#fff">The Pharmacy Christmas Competition 2026 · Admin</strong>
     <div class="admin-bar" id="who" hidden>
       <span>Signed in as <strong id="whoEmail" style="color:#fff"></strong></span>
       <button class="btn ghost small" type="button" id="signOut">Sign out</button>
@@ -50,6 +46,14 @@
           <span class="hint" id="qWhen"></span>
         </div>
         <button class="btn big" type="button" id="toggleBtn" disabled>…</button>
+      </div>
+      <div class="quick-row">
+        <div class="quick-state">
+          <span class="lbl">Results (leaderboard and placings)</span>
+          <strong id="rState">…</strong>
+          <span class="hint">Hidden from players until you reveal them. You can always see scores in Entries.</span>
+        </div>
+        <button class="btn big" type="button" id="resultsBtn" disabled>…</button>
       </div>
       <form class="quick-row" id="codeForm" novalidate>
         <div class="field" style="flex:1 1 320px">
@@ -96,6 +100,15 @@
           <span class="okmsg" id="evOk" role="status"></span>
         </div>
         <p class="msg" id="evMsg" role="alert"></p>
+      </form>
+      <form class="box" id="prizeForm" novalidate style="margin-top:22px;max-width:640px">
+        <h2>Prizes</h2>
+        <p>Shown on the homepage as 1st, 2nd and 3rd prizes, sponsored by Pharmacy Board. Leave one blank to show "To be revealed".</p>
+        <div class="field"><label for="p1">1st prize</label><input id="p1" type="text" maxlength="120"></div>
+        <div class="field"><label for="p2">2nd prize</label><input id="p2" type="text" maxlength="120"></div>
+        <div class="field"><label for="p3">3rd prize</label><input id="p3" type="text" maxlength="120"></div>
+        <div class="inline" style="align-items:center"><button class="btn" type="submit" id="prizeBtn">Save prizes</button><span class="okmsg" id="prizeOk" role="status"></span></div>
+        <p class="msg" id="prizeMsg" role="alert"></p>
       </form>
     </section>
 
@@ -144,6 +157,15 @@
       <div class="grid2">
         <form class="box" id="qForm" novalidate>
           <h2 id="qfTitle">Add a question</h2>
+          <fieldset class="qkind"><legend>Type of question</legend>
+            <label class="qchk"><input type="radio" name="qKind" value="text" checked> Written question</label>
+            <label class="qchk"><input type="radio" name="qKind" value="image"> Guess the picture</label>
+          </fieldset>
+          <div id="qPicBox" hidden>
+            <div class="field"><label for="qFile">Picture (JPG or PNG)</label><input id="qFile" type="file" accept="image/jpeg,image/png,image/webp"></div>
+            <div class="pic qprev"><canvas id="qCanvas" width="800" height="500" role="img" aria-label="Picture preview"></canvas><div class="qgrid" aria-hidden="true"></div><p class="qempty" id="qEmpty">No picture chosen</p></div>
+            <p class="qhint">It's cropped to fit (16:10) and cut into 20 tiles. Players start with 1 tile showing, and the rest uncover at random spots over the time limit. A right answer straight away scores full points, falling to 10% when the whole picture is showing.</p>
+          </div>
           <div class="field"><label for="qText">Question</label><textarea id="qText" rows="3" maxlength="300" required></textarea></div>
           <fieldset class="qopts"><legend>Options. Tick the correct one.</legend>
             <div class="qopt"><input type="radio" name="qRight" id="qR1" value="1" aria-label="Option 1 is correct"><label class="sr-only" for="qO1">Option 1</label><input id="qO1" type="text" maxlength="150" placeholder="Option 1"></div>
@@ -153,6 +175,7 @@
           </fieldset>
           <div class="qrow">
             <div class="field"><label for="qPoints">Points</label><input id="qPoints" type="number" min="0" max="1000" step="10" value="100"></div>
+            <div class="field"><label for="qSecs">Seconds to answer</label><input id="qSecs" type="number" min="5" max="180" step="5" value="20"></div>
             <label class="qchk"><input id="qActive" type="checkbox" checked> In the quiz</label>
           </div>
           <p class="msg" id="qMsg" role="alert"></p>
@@ -160,7 +183,7 @@
         </form>
         <form class="box" id="qBulk" novalidate>
           <h2>Add many at once</h2>
-          <p>Paste from Excel or a CSV, one question per line: <strong>Question, Option 1, Option 2, Option 3, Option 4, Correct (1 to 4)</strong>, and optionally Points. A heading row is skipped.</p>
+          <p>Paste from Excel or a CSV, one question per line: <strong>Question, Option 1, Option 2, Option 3, Option 4, Correct (1 to 4)</strong>, and optionally Points and Seconds to answer (5 to 180, 20 if blank). A heading row is skipped. Picture questions are added one at a time with the form.</p>
           <div class="field"><label for="qPaste" class="sr-only">Questions to add</label><textarea id="qPaste" rows="7" placeholder="Which vitamin is made in the skin in sunlight?, Vitamin A, Vitamin C, Vitamin D, Vitamin K, 3"></textarea></div>
           <p class="msg" id="qbMsg" role="alert"></p>
           <div class="inline"><button class="btn" type="submit" id="qbGo">Add these questions</button><button class="btn ghost" type="button" id="qTpl">Download template</button></div>
@@ -185,7 +208,7 @@
     <section id="pTest" role="tabpanel" aria-labelledby="tTest" hidden>
       <p class="qnote">Play any round as a player would, with your round length. Test plays aren't saved: no access code, no entry, no email, and nothing goes on the leaderboard. Works whether the competition is open or closed.</p>
       <div class="cards">
-        <article class="card"><div class="body"><span class="tag">Round</span><h3>Reindeer Flight</h3><p>Includes the tutorial. The clock starts at take-off. Keyboard only.</p><button class="btn" type="button" data-test="flight">Play test</button></div></article>
+        <article class="card"><div class="body"><span class="tag">Round</span><h3>Reindeer Flight</h3><p>Includes the tutorial, which you can skip here (players can't). The clock starts when the real flight begins. Keyboard only.</p><button class="btn" type="button" data-test="flight">Play test</button></div></article>
         <article class="card"><div class="body"><span class="tag">Round</span><h3>Grotto Dash</h3><p>The clock starts when you press start in the game.</p><button class="btn" type="button" data-test="grotto">Play test</button></div></article>
         <article class="card"><div class="body"><span class="tag">Round</span><h3>The Christmas Quiz</h3><p>Every question that's in the quiz, in order, with the options shuffled as players see them.</p><button class="btn" type="button" data-test="quiz">Play test</button></div></article>
       </div>
@@ -321,6 +344,8 @@
   $("fMins").addEventListener("input", totalHint);
   function fill(s) {
     settings = s;
+    resultsUI(s);
+    $("p1").value = s.prize_1 || ""; $("p2").value = s.prize_2 || ""; $("p3").value = s.prize_3 || "";
     $("fName").value = s.event_name; $("fStart").value = toInput(s.event_starts_at); $("fEnd").value = toInput(s.event_ends_at);
     $("fCode").value = s.access_code; $("fMins").value = Math.round(s.round_seconds / 60);
     const on = s.rounds || [];
@@ -362,6 +387,14 @@
     catch (e) { $("qMsg").textContent = e.message; status(); }
     $("codeBtn").disabled = false;
   }
+  function resultsUI(s) { $("rState").textContent = s.results_public ? "Revealed" : "Hidden"; $("resultsBtn").textContent = s.results_public ? "Hide results" : "Reveal results"; $("resultsBtn").disabled = false; }
+  $("resultsBtn").addEventListener("click", async () => {
+    const show = !settings.results_public;
+    if (!confirm(show ? "Reveal the results? The leaderboard appears on the homepage and players see their placing." : "Hide the results again? The leaderboard disappears from the homepage.")) return;
+    $("resultsBtn").disabled = true;
+    try { await rpc("admin_set_results", { p_show: show }); settings.results_public = show; resultsUI(settings); }
+    catch (e) { $("qMsg").textContent = e.message; $("resultsBtn").disabled = false; }
+  });
   $("toggleBtn").addEventListener("click", () => {
     const now = new Date();
     if (isOpen()) {
@@ -474,8 +507,35 @@
   // ---------- Quiz questions ----------
   let questions = [], qEditing = null;
   const qInputs = [1, 2, 3, 4].map(i => $("qO" + i));
+  // ----- picture questions: crop to 800 x 500 in the browser and cut into 20 tiles (5 x 4) -----
+  let qTiles = null;   // new tiles to upload; null = keep the current picture
+  const qCtx = $("qCanvas").getContext("2d");
+  const qKind = () => (document.querySelector("input[name=qKind]:checked") || {}).value || "text";
+  function qKindUI() { const img = qKind() === "image"; $("qPicBox").hidden = !img; if (img && !$("qText").value.trim()) $("qText").value = "Who or what is in the picture?"; }
+  function qClearPic() { qCtx.clearRect(0, 0, 800, 500); $("qEmpty").hidden = false; qTiles = null; $("qFile").value = ""; }
+  document.querySelectorAll("input[name=qKind]").forEach(r => r.addEventListener("change", () => { qKindUI(); if (qKind() === "image" && $("qSecs").value === "20") $("qSecs").value = 30; if (qKind() === "text" && $("qSecs").value === "30") $("qSecs").value = 20; }));
+  $("qFile").addEventListener("change", () => {
+    const f = $("qFile").files[0]; $("qMsg").textContent = ""; if (!f) return;
+    if (!/^image\/(jpeg|png|webp)$/.test(f.type)) { $("qMsg").textContent = "Choose a JPG or PNG picture."; return; }
+    const url = URL.createObjectURL(f), img = new Image();
+    img.onload = () => {
+      const sc = Math.max(800 / img.naturalWidth, 500 / img.naturalHeight), w = img.naturalWidth * sc, h = img.naturalHeight * sc;
+      qCtx.fillStyle = "#000"; qCtx.fillRect(0, 0, 800, 500); qCtx.drawImage(img, (800 - w) / 2, (500 - h) / 2, w, h); URL.revokeObjectURL(url);
+      const t = document.createElement("canvas"); t.width = 160; t.height = 125; const tc = t.getContext("2d"); qTiles = [];
+      for (let i = 0; i < 20; i++) { tc.drawImage($("qCanvas"), (i % 5) * 160, Math.floor(i / 5) * 125, 160, 125, 0, 0, 160, 125); qTiles.push(t.toDataURL("image/jpeg", .82)); }
+      $("qEmpty").hidden = true;
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); $("qMsg").textContent = "That picture couldn't be opened. Try another."; };
+    img.src = url;
+  });
+  async function qLoadPic(id) {
+    qClearPic();
+    try { const rows = await rpc("admin_question_tiles", { p_id: id }) || [];
+      rows.forEach(t => { const im = new Image(); im.onload = () => qCtx.drawImage(im, (t.idx % 5) * 160, Math.floor(t.idx / 5) * 125, 160, 125); im.src = t.data; });
+      $("qEmpty").hidden = rows.length > 0; } catch (e) { $("qMsg").textContent = e.message; }
+  }
   function qReset() {
-    qEditing = null; $("qForm").reset(); $("qPoints").value = 100; $("qActive").checked = true;
+    qEditing = null; $("qForm").reset(); $("qPoints").value = 100; $("qSecs").value = 20; $("qActive").checked = true; qClearPic(); qKindUI();
     $("qfTitle").textContent = "Add a question"; $("qSave").textContent = "Add question"; $("qCancel").hidden = true; $("qMsg").textContent = "";
   }
   async function loadQuestions() {
@@ -491,6 +551,7 @@
     questions.forEach((q, idx) => {
       const tr = document.createElement("tr"); if (!q.active) tr.className = "is-hidden";
       const cell = document.createElement("td"), qt = document.createElement("strong"); qt.className = "qq"; qt.textContent = q.question; cell.appendChild(qt);
+      const meta = document.createElement("span"); meta.className = "qmeta"; meta.textContent = (q.kind === "image" ? "Guess the picture" : "Written") + " · " + q.time_limit + " seconds"; cell.appendChild(meta);
       if (!q.active) { const s = document.createElement("span"); s.className = "sub"; s.textContent = "Hidden: not in the quiz"; cell.appendChild(s); }
       const ol = document.createElement("ol"); ol.className = "qlist";
       q.options.forEach((o, i) => { const li = document.createElement("li"); li.textContent = o; if (show && i === q.correct_index) { li.className = "right"; li.append(" ✓"); } ol.appendChild(li); });
@@ -508,7 +569,7 @@
       tr.append(td(q.active ? String(++n) : "–", "pos"), cell, td(String(q.points), "num"), ans, acts); tb.appendChild(tr);
     });
   }
-  const rowArgs = q => ({ p_id: q.id, p_question: q.question, p_options: q.options, p_correct: q.correct_index + 1, p_points: q.points, p_sort: q.sort_order, p_active: q.active });
+  const rowArgs = q => ({ p_id: q.id, p_question: q.question, p_options: q.options, p_correct: q.correct_index + 1, p_points: q.points, p_sort: q.sort_order, p_active: q.active, p_kind: q.kind, p_time: q.time_limit, p_tiles: null });
   async function qSaveRow(q, changes) {
     try { await rpc("admin_save_question", Object.assign(rowArgs(q), changes)); await loadQuestions(); } catch (e) { $("qlMsg").textContent = e.message; }
   }
@@ -523,7 +584,8 @@
   function qEdit(q) {
     qEditing = q; $("qMsg").textContent = "";
     $("qText").value = q.question; q.options.forEach((o, i) => { qInputs[i].value = o; }); $("qR" + (q.correct_index + 1)).checked = true;
-    $("qPoints").value = q.points; $("qActive").checked = q.active;
+    $("qPoints").value = q.points; $("qSecs").value = q.time_limit; $("qActive").checked = q.active;
+    document.querySelector("input[name=qKind][value=" + q.kind + "]").checked = true; qKindUI(); if (q.kind === "image") qLoadPic(q.id); else qClearPic();
     $("qfTitle").textContent = "Edit question"; $("qSave").textContent = "Save question"; $("qCancel").hidden = false;
     if (q.answered) $("qMsg").textContent = "Already answered by " + q.answered + ", so only “In the quiz” can change.";
     $("qText").focus(); $("qForm").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -541,10 +603,13 @@
     if (!$("qText").value.trim()) { $("qMsg").textContent = "Type the question."; return $("qText").focus(); }
     const empty = qInputs.find(i => !i.value.trim()); if (empty) { $("qMsg").textContent = "Fill in all 4 options."; return empty.focus(); }
     if (!right) { $("qMsg").textContent = "Tick the correct option."; return; }
+    const secs = Number($("qSecs").value); if (!(secs >= 5 && secs <= 180)) { $("qMsg").textContent = "Seconds to answer must be 5 to 180."; return $("qSecs").focus(); }
+    if (qKind() === "image" && !qTiles && !(qEditing && qEditing.kind === "image")) { $("qMsg").textContent = "Choose a picture."; return $("qFile").focus(); }
     $("qSave").disabled = true;
     try {
       await rpc("admin_save_question", { p_id: qEditing ? qEditing.id : null, p_question: $("qText").value, p_options: qInputs.map(i => i.value), p_correct: Number(right.value),
-        p_points: Number($("qPoints").value || 100), p_sort: qEditing ? qEditing.sort_order : null, p_active: $("qActive").checked });
+        p_points: Number($("qPoints").value || 100), p_sort: qEditing ? qEditing.sort_order : null, p_active: $("qActive").checked,
+        p_kind: qKind(), p_time: secs, p_tiles: qKind() === "image" ? qTiles : null });
       qReset(); await loadQuestions(); $("qText").focus();
     } catch (e) { $("qMsg").textContent = e.message; }
     $("qSave").disabled = false;
@@ -569,17 +634,24 @@
     if (rows.length && !/^[1-4]$/.test(rows[0][5] || "")) rows = rows.slice(1);   // heading row
     if (!rows.length) { $("qbMsg").textContent = "Nothing to add. Paste one question per line."; return; }
     const bad = [];
-    rows.forEach((r, i) => { if (r.length < 6 || r.slice(0, 5).some(x => !x) || !/^[1-4]$/.test(r[5]) || (r[6] && !/^\d+$/.test(r[6]))) bad.push(i + 1); });
+    rows.forEach((r, i) => { if (r.length < 6 || r.slice(0, 5).some(x => !x) || !/^[1-4]$/.test(r[5]) || (r[6] && !/^\d+$/.test(r[6])) || (r[7] && !(/^\d+$/.test(r[7]) && +r[7] >= 5 && +r[7] <= 180))) bad.push(i + 1); });
     if (bad.length) { $("qbMsg").textContent = "Check line" + (bad.length > 1 ? "s " : " ") + bad.slice(0, 8).join(", ") + ": each needs a question, 4 options and the correct option number (1 to 4). Nothing was added."; return; }
     $("qbGo").disabled = true; let added = 0;
-    try { for (const r of rows) { await rpc("admin_save_question", { p_id: null, p_question: r[0], p_options: r.slice(1, 5), p_correct: Number(r[5]), p_points: r[6] ? Number(r[6]) : 100, p_sort: null, p_active: true }); added++; } $("qPaste").value = ""; }
+    try { for (const r of rows) { await rpc("admin_save_question", { p_id: null, p_question: r[0], p_options: r.slice(1, 5), p_correct: Number(r[5]), p_points: r[6] ? Number(r[6]) : 100, p_time: r[7] ? Number(r[7]) : 20, p_kind: "text", p_sort: null, p_active: true }); added++; } $("qPaste").value = ""; }
     catch (e) { $("qbMsg").textContent = "Added " + added + " of " + rows.length + ". Line " + (added + 1) + ": " + e.message; $("qPaste").value = rows.slice(added).map(r => r.map(x => /[",]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x).join(", ")).join("\n"); }
     $("qbGo").disabled = false; await loadQuestions();
     if (added && added === rows.length) { $("qbMsg").textContent = ""; alert(added + (added === 1 ? " question" : " questions") + " added."); }
   });
   $("qTpl").addEventListener("click", () => {
-    const csv = "Question,Option 1,Option 2,Option 3,Option 4,Correct (1-4),Points\r\n\"Which vitamin is made in the skin in sunlight?\",Vitamin A,Vitamin C,Vitamin D,Vitamin K,3,100\r\n";
+    const csv = "Question,Option 1,Option 2,Option 3,Option 4,Correct (1-4),Points,Seconds\r\n\"Which vitamin is made in the skin in sunlight?\",Vitamin A,Vitamin C,Vitamin D,Vitamin K,3,100,20\r\n";
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv" })); a.download = "quiz-questions-template.csv"; document.body.appendChild(a); a.click(); a.remove();
+  });
+
+  $("prizeForm").addEventListener("submit", async ev => {
+    ev.preventDefault(); $("prizeMsg").textContent = ""; $("prizeOk").textContent = ""; $("prizeBtn").disabled = true;
+    try { await rpc("admin_save_prizes", { p_1: $("p1").value, p_2: $("p2").value, p_3: $("p3").value }); $("prizeOk").textContent = "Prizes saved."; }
+    catch (e) { $("prizeMsg").textContent = e.message; }
+    $("prizeBtn").disabled = false;
   });
 
   // ---------- Test the games (runs entirely in this page; nothing is sent to the player functions) ----------
@@ -607,7 +679,7 @@
     window.__xmasGameStart = () => { if (!tTimerId && tGame === key) tStart(timeUp); };
     const watch = setInterval(() => { best = Math.max(best, live());
       if (!window.__pdOpen) { clearInterval(watch); if (tGame === key) { tGame = null; tStop(); $("testMsg").textContent = "Test finished. Best score this test: " + best.toLocaleString("en-GB") + " (not saved)."; } } }, 400);
-    window[g.global].open();
+    window[g.global].open(key === "flight" ? { canSkip: true } : undefined);   // admins can skip the tutorial
   }
   async function testQuiz() {
     const box = $("testQuiz"); $("testMsg").textContent = "";
@@ -616,28 +688,52 @@
     const h = (tag, cls, text) => { const x = document.createElement(tag); if (cls) x.className = cls; if (text != null) x.textContent = text; return x; };
     if (!qs.length) { box.append(h("h1", "", "The Christmas Quiz"), h("p", "", "No questions are in the quiz yet. Add some in the Quiz questions tab.")); return; }
     let i = 0, right = 0, pts = 0, done = false;
-    const finish = () => { if (done) return; done = true; tStop(); box.textContent = "";
+    const finish = () => { if (done) return; done = true; tStop(); stopQ(); box.textContent = "";
       const close = h("button", "btn", "Close"); close.type = "button"; close.addEventListener("click", () => { box.hidden = true; });
       box.append(h("h1", "", "Test quiz finished"), h("p", "", right + " of " + qs.length + " right, " + pts.toLocaleString("en-GB") + " points (not saved)."), (() => { const a = h("div", "actions"); a.appendChild(close); return a; })()); close.focus(); };
     tStart(finish);
-    const show = () => {
-      if (done) return; const q = qs[i]; box.textContent = "";
+    let qt = [];
+    const stopQ = () => { qt.forEach(clearInterval); qt = []; };
+    const show = async () => {
+      if (done) return; stopQ(); const q = qs[i]; box.textContent = "";
       const order = [0, 1, 2, 3].sort(() => Math.random() - .5), fb = h("p", "feedback"), next = h("div", "actions"); fb.setAttribute("role", "status");
-      const opts = order.map(k => { const b = h("button", "opt", q.options[k]); b.type = "button"; b.addEventListener("click", () => {
-        opts.forEach(x => { x.disabled = true; }); const ok = k === q.correct_index; if (ok) { right++; pts += q.points; } else b.classList.add("wrong");
-        opts[order.indexOf(q.correct_index)].classList.add("right");
-        fb.className = "feedback " + (ok ? "ok" : "no"); fb.textContent = ok ? "Correct!" : "Not quite. The answer was: " + q.options[q.correct_index];
+      const t0 = performance.now(), lim = q.time_limit, el = () => (performance.now() - t0) / 1000; let answered = false;
+      const shownAt = s => Math.min(20, 1 + Math.floor(19 * Math.max(0, s) / lim)), worth = s => Math.max(Math.ceil(q.points * .1), Math.round(q.points * (20 - shownAt(s)) / 19));
+      const head = h("div", "qhead"), wEl = h("span", "", q.points + " points"); head.append(h("span", "", "Test · " + (q.kind === "image" ? "picture · " : "") + "question " + (i + 1) + " of " + qs.length), wEl);
+      const track = h("div", "track"), bar = h("i"), secs = h("span", "qsecs"), clock = h("div", "qtime"); track.appendChild(bar); clock.append(track, secs);
+      let pic = null, covers = [], tiles = [], tileOrder = [];
+      if (q.kind === "image") {
+        const cv = document.createElement("canvas"); cv.width = 800; cv.height = 500; const cx = cv.getContext("2d"), cov = h("div", "covers");
+        for (let k = 0; k < 20; k++) { const c = h("span", "", "?"); covers.push(c); cov.appendChild(c); }
+        pic = h("div", "pic"); pic.append(cv, cov);
+        try { tiles = await rpc("admin_question_tiles", { p_id: q.id }) || []; } catch (e) { tiles = []; }
+        tiles.forEach(t => { const im = new Image(); im.onload = () => cx.drawImage(im, (t.idx % 5) * 160, Math.floor(t.idx / 5) * 125, 160, 125); im.src = t.data; });
+        tileOrder = Array.from({ length: 20 }, (_, k) => k).sort(() => Math.random() - .5);
+      }
+      const reveal = n => tileOrder.slice(0, n).forEach(k => covers[k] && covers[k].classList.add("gone"));
+      const mark = k => {
+        if (answered) return; answered = true; stopQ(); opts.forEach(x => { x.disabled = true; });
+        const ok = k === q.correct_index, got = ok ? (q.kind === "image" ? worth(el()) : q.points) : 0; if (ok) { right++; pts += got; }
+        if (k != null && !ok) opts[order.indexOf(k)].classList.add("wrong");
+        opts[order.indexOf(q.correct_index)].classList.add("right"); reveal(20); wEl.textContent = q.points + " points";
+        fb.className = "feedback " + (ok ? "ok" : "no"); fb.textContent = ok ? "Correct! +" + got + " points" : (k == null ? "Time's up. " : "Not quite. ") + "The answer was: " + q.options[q.correct_index];
         const last = i === qs.length - 1, nb = h("button", "btn", last ? "Finish the quiz" : "Next question"); nb.type = "button";
-        nb.addEventListener("click", () => { if (last) finish(); else { i++; show(); } }); next.appendChild(nb); nb.focus(); }); return b; });
-      const head = h("div", "qhead"); head.append(h("span", "", "Test · question " + (i + 1) + " of " + qs.length), h("span", "", q.points + " points"));
-      const o = h("div", "opts"); o.append(...opts); box.append(head, h("h1", "qtext", q.question), o, fb, next); opts[0].focus();
+        nb.addEventListener("click", () => { if (last) finish(); else { i++; show(); } }); next.appendChild(nb); nb.focus();
+      };
+      const opts = order.map(k => { const b = h("button", "opt", q.options[k]); b.type = "button"; b.addEventListener("click", () => mark(k)); return b; });
+      const tick = () => { if (answered || done) return; const left = Math.max(0, lim - el());
+        bar.style.width = (left / lim * 100) + "%"; clock.classList.toggle("warn", left <= 5); secs.textContent = Math.ceil(left) + "s";
+        if (q.kind === "image") { reveal(shownAt(el())); wEl.textContent = "Worth " + worth(el()) + " points now"; }
+        if (left <= 0) mark(null); };
+      qt.push(setInterval(tick, 100)); tick();
+      const o = h("div", "opts"); o.append(...opts); box.append(head, clock, h("h1", "qtext", q.question)); if (pic) box.append(pic); box.append(o, fb, next); opts[0].focus();
     };
     show(); box.scrollIntoView({ behavior: "smooth", block: "start" });
   }
   document.querySelectorAll("[data-test]").forEach(b => b.addEventListener("click", () => (b.dataset.test === "quiz" ? testQuiz() : testGame(b.dataset.test))));
 
   // ---------- Log ----------
-  const LABEL = { settings_saved: "Event settings saved", entry_updated: "Entry edited", entry_deleted: "Entry deleted", all_entries_deleted: "All entries deleted", question_added: "Question added", question_updated: "Question edited", question_deleted: "Question deleted" };
+  const LABEL = { settings_saved: "Event settings saved", entry_updated: "Entry edited", entry_deleted: "Entry deleted", all_entries_deleted: "All entries deleted", question_added: "Question added", question_updated: "Question edited", question_deleted: "Question deleted", prizes_saved: "Prizes saved", results_revealed: "Results revealed", results_hidden: "Results hidden" };
   async function loadLog() {
     const ul = $("log"); ul.textContent = "";
     let rows; try { rows = await rpc("admin_get_log", { p_limit: 100 }); } catch (e) { const li = document.createElement("li"); li.textContent = e.message; ul.appendChild(li); return; }

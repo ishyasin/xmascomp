@@ -1,7 +1,9 @@
-/* Sleigh Flight (The Pharmacy Christmas Competition 2026). Self-contained 3D game: Santa takes off from St Richard's Hospital,
-   Chichester, lands on Worthing Pier, flies past the i360, Brighton Palace Pier and the Royal Pavilion, lands on the
-   Royal Sussex County Hospital helipad, then flies over the Downs to the Princess Royal Hospital, Haywards Heath.
-   Keyboard only: arrows or WASD steer, Space boosts, Enter skips the tutorial, Esc leaves. three.js r128 is in vendor/. */
+/* Sleigh Flight (The Pharmacy Christmas Competition 2026). Self-contained 3D game: Santa, already in the air over
+   St Richard's Hospital, Chichester, flies out to the coast, past Worthing Pier, the West Pier and the i360, then turns
+   left inland over the Royal Pavilion and on over the Downs to the Princess Royal Hospital, Haywards Heath.
+   Keyboard only: up arrow / W climbs, down arrow / S dives, left/right or A/D steer, Space boosts.
+   The tutorial is compulsory; open({ canSkip: true }) lets it be skipped (admin testing, or a player who has done it).
+   three.js r128 is in vendor/. */
 (function () {
 "use strict";
 if (window.XmasSleigh) return;
@@ -16,6 +18,10 @@ const CSS = `#cfRoot body{padding-left:max(16px,env(safe-area-inset-left,0px));p
 #cfRoot .loc{position:absolute;left:14px;top:58px;font-weight:700;font-size:12.5px;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.8);pointer-events:none;max-width:40%}
 #cfRoot .banner{position:absolute;left:50%;top:24%;transform:translate(-50%,-8px);opacity:0;transition:opacity .35s,transform .35s;background:rgba(10,24,60,.74);border:1px solid rgba(255,255,255,.35);padding:8px 18px;border-radius:999px;font-weight:800;font-size:clamp(14px,2.6vw,19px);color:#fff;pointer-events:none;white-space:nowrap;max-width:94%;overflow:hidden;text-overflow:ellipsis}
 #cfRoot .banner.on{opacity:1;transform:translate(-50%,0)}
+#cfRoot .ahi{position:absolute;right:14px;bottom:12px;width:min(118px,20vw);pointer-events:none;z-index:3;filter:drop-shadow(0 2px 6px rgba(0,0,0,.45))}
+#cfRoot .ahi svg{display:block;width:100%;height:auto}
+#cfRoot .ahi .ahn{font:700 6px system-ui,sans-serif;fill:#fff}
+#cfRoot .ahr{display:flex;justify-content:space-between;gap:6px;margin-top:3px;font:800 10.5px system-ui,sans-serif;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.7);font-variant-numeric:tabular-nums}
 #cfRoot .route{position:absolute;left:50%;bottom:32px;width:min(320px,66%);height:4px;background:rgba(255,255,255,.35);border-radius:3px;transform:translateX(-50%);pointer-events:none}
 #cfRoot .route b{position:absolute;top:-3px;width:2px;height:10px;background:#fff}
 #cfRoot .route u{position:absolute;top:10px;font-size:9.5px;font-weight:700;text-decoration:none;white-space:nowrap;transform:translateX(-50%);color:#fff;text-shadow:0 1px 4px #000}
@@ -52,6 +58,7 @@ const CSS = `#cfRoot body{padding-left:max(16px,env(safe-area-inset-left,0px));p
 #cfRoot .tut b{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:#7fe3ff}
 #cfRoot .tut p{margin:3px 0 9px;font-weight:800;font-size:clamp(14px,2.3vw,19px)}
 #cfRoot .kb{display:flex;gap:16px;justify-content:center;align-items:flex-end}
+
 #cfRoot .kc{display:grid;grid-template-columns:repeat(3,30px);gap:4px}
 #cfRoot .kc i,#cfRoot .sp{display:flex;align-items:center;justify-content:center;height:28px;border-radius:6px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.3);font-style:normal;font-weight:800;font-size:13px;color:#dfe6ff;transition:background .08s,transform .08s}
 #cfRoot .kc i.e{visibility:hidden}
@@ -64,7 +71,7 @@ const CSS = `#cfRoot body{padding-left:max(16px,env(safe-area-inset-left,0px));p
 #cfRoot .land{position:absolute;left:50%;top:12%;transform:translateX(-50%);background:rgba(0,48,30,.85);border:2px solid #7dff8a;border-radius:10px;padding:6px 16px;color:#d9ffe0;font-weight:800;font-size:clamp(13px,2.2vw,17px);pointer-events:none;white-space:nowrap;display:none;z-index:4}
 #cfRoot .land em{font-style:normal;color:#fff;font-size:1.35em;margin-left:10px;letter-spacing:.1em}
 `;
-const HTML = `<button class="cfx" type="button">Exit</button><button class="cfs snd" type="button">Sound on</button><div class="cfg" id="cfstage"><div class="hud"><div><span id="cfsc">0</span><small>score</small></div><div style="text-align:center"><span id="cfhp">&hearts;&hearts;&hearts;</span><div class="meter"><i id="cfbo"></i></div><small>boost (Space)</small></div><div style="text-align:right"><span id="cfal">0</span> m<small id="cfbest">Best 0</small></div></div><div class="loc" id="cfloc"></div><div class="banner" id="cfbn"></div><div class="land" id="cfland"></div><div class="tut" id="cftut" hidden><b id="cftstep">Tutorial</b><p id="cfttxt"></p><div class="kb"><div class="kc"><i class="e"></i><i data-k="w">W</i><i class="e"></i><i data-k="a">A</i><i data-k="s">S</i><i data-k="d">D</i></div><div class="sp" data-k=" ">SPACE</div><div class="kc"><i class="e"></i><i data-k="arrowup">&uarr;</i><i class="e"></i><i data-k="arrowleft">&larr;</i><i data-k="arrowdown">&darr;</i><i data-k="arrowright">&rarr;</i></div></div><div class="tbar"><i id="cftbar"></i></div><small>Practice only: nothing is scored. Enter skips to the real flight.</small></div><div class="route" id="cfroute"><span class="dot" id="cfrdot"></span></div><div class="ov" id="cfov"><div class="brand">ED&amp;G&trade;</div><div class="rule"><span></span><span></span><span></span></div><h2>Sleigh Flight</h2><div class="sub">Take off from St Richard's in Chichester, land on Worthing Pier, fly past the i360, Palace Pier and Royal Pavilion, land on the Royal Sussex County helipad, then on over the Downs to the Princess Royal. Wreaths for points, presents for boost, a golden wreath for an aileron roll.</div><div class="cfb" id="cfboard"></div><div class="btns"><button id="cftutgo" type="button">Start tutorial (Space)</button><button id="cfgo" class="ghost" type="button">Skip tutorial &middot; take off (Enter)</button></div><div class="keys">Keyboard only: arrows or WASD steer &middot; Space boosts &middot; Esc to exit</div></div></div>`;
+const HTML = `<button class="cfx" type="button">Exit</button><button class="cfs snd" type="button">Sound on</button><div class="cfg" id="cfstage"><div class="hud"><div><span id="cfsc">0</span><small>score</small></div><div style="text-align:center"><span id="cfhp">&hearts;&hearts;&hearts;</span><div class="meter"><i id="cfbo"></i></div><small>boost (Space)</small></div><div style="text-align:right"><span id="cfal">0</span> m<small id="cfbest">Best 0</small></div></div><div class="loc" id="cfloc"></div><div class="banner" id="cfbn"></div><div class="land" id="cfland"></div><div class="tut" id="cftut" hidden><b id="cftstep">Tutorial</b><p id="cfttxt"></p><div class="kb"><div class="kc"><i class="e"></i><i data-k="w">W</i><i class="e"></i><i data-k="a">A</i><i data-k="s">S</i><i data-k="d">D</i></div><div class="sp" data-k=" ">SPACE</div><div class="kc"><i class="e"></i><i data-k="arrowup">&uarr;</i><i class="e"></i><i data-k="arrowleft">&larr;</i><i data-k="arrowdown">&darr;</i><i data-k="arrowright">&rarr;</i></div></div><div class="tbar"><i id="cftbar"></i></div><small id="cftnote">Practice only: nothing is scored. The real flight starts as soon as you finish.</small></div><div class="ahi" aria-hidden="true"><svg viewBox="-50 -50 100 100"><defs><clipPath id="cfahc"><circle r="40"/></clipPath></defs><g clip-path="url(#cfahc)"><g id="cfahg"><rect x="-120" y="-120" width="240" height="120" fill="#3b82c4"/><rect x="-120" y="0" width="240" height="120" fill="#7a5532"/><line x1="-120" y1="0" x2="120" y2="0" stroke="#fff" stroke-width="1.4"/><line x1="-10" y1="-24" x2="10" y2="-24" stroke="#fff" stroke-width=".8"/><line x1="-6" y1="-12" x2="6" y2="-12" stroke="#fff" stroke-width=".8"/><line x1="-6" y1="12" x2="6" y2="12" stroke="#fff" stroke-width=".8"/><line x1="-10" y1="24" x2="10" y2="24" stroke="#fff" stroke-width=".8"/><text x="13" y="-21" class="ahn">20</text><text x="13" y="-9" class="ahn">10</text><text x="13" y="15" class="ahn">10</text><text x="13" y="27" class="ahn">20</text></g></g><circle r="40" fill="none" stroke="#0b1a40" stroke-width="3"/><circle r="45" fill="none" stroke="#c9d6f5" stroke-width="7" opacity=".9"/><line x1="0" y1="-41.5" x2="0" y2="-47" stroke="#0b1a40" stroke-width="1.6" transform="rotate(-60)"/><line x1="0" y1="-41.5" x2="0" y2="-44.5" stroke="#0b1a40" stroke-width="1.6" transform="rotate(-45)"/><line x1="0" y1="-41.5" x2="0" y2="-47" stroke="#0b1a40" stroke-width="1.6" transform="rotate(-30)"/><line x1="0" y1="-41.5" x2="0" y2="-44.5" stroke="#0b1a40" stroke-width="1.6" transform="rotate(-20)"/><line x1="0" y1="-41.5" x2="0" y2="-44.5" stroke="#0b1a40" stroke-width="1.6" transform="rotate(-10)"/><line x1="0" y1="-41.5" x2="0" y2="-47" stroke="#0b1a40" stroke-width="1.6" transform="rotate(0)"/><line x1="0" y1="-41.5" x2="0" y2="-44.5" stroke="#0b1a40" stroke-width="1.6" transform="rotate(10)"/><line x1="0" y1="-41.5" x2="0" y2="-44.5" stroke="#0b1a40" stroke-width="1.6" transform="rotate(20)"/><line x1="0" y1="-41.5" x2="0" y2="-47" stroke="#0b1a40" stroke-width="1.6" transform="rotate(30)"/><line x1="0" y1="-41.5" x2="0" y2="-44.5" stroke="#0b1a40" stroke-width="1.6" transform="rotate(45)"/><line x1="0" y1="-41.5" x2="0" y2="-47" stroke="#0b1a40" stroke-width="1.6" transform="rotate(60)"/><path d="M0 -40 l-3.2 6 h6.4z" fill="#f2c14e"/><path d="M-26 1 h14 l4 6 l4 -6 h0 M4 1 h0 l4 6 l4 -6 h14" fill="none" stroke="#f2c14e" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/><circle r="2" fill="#f2c14e"/></svg><div class="ahr"><span id="cfahs">0 mph</span><span id="cfaha">0 ft</span></div></div><div class="route" id="cfroute"><span class="dot" id="cfrdot"></span></div><div class="ov" id="cfov"><div class="brand">ED&amp;G&trade;</div><div class="rule"><span></span><span></span><span></span></div><h2>Sleigh Flight</h2><div class="sub">From St Richard's in Chichester out to the coast, past Worthing Pier, the West Pier and the i360, then left inland over the Royal Pavilion and on to the Princess Royal in Haywards Heath. Wreaths for points, presents for boost, a golden wreath for an aileron roll. A short tutorial comes first.</div><div class="cfb" id="cfboard"></div><div class="btns"><button id="cftutgo" type="button">Start the tutorial (Space)</button><button id="cfgo" class="ghost" type="button" hidden>Skip tutorial (Enter)</button></div><div class="keys">&uarr;/W climb &middot; &darr;/S dive &middot; &larr; &rarr; or A D steer &middot; Space boosts &middot; Esc to exit</div></div></div>`;
 function build() {
   const $ = id => root.querySelector("#cf" + id);
   const stage = root.querySelector(".cfg"), ov = $("ov");
@@ -391,7 +398,7 @@ function build() {
     const boxes = [{ x0: -18.2, x1: -15.8, y0: 0, y1: 60, z0: -1.3, z1: 1.3 }, { x0: -20.3, x1: -13.7, y0: 0, y1: 0, z0: -3.2, z1: 3.2 }];
     const ph = Math.random() * 6; g.userData = { kind: "lm", D: 8, boxes, dyn: (o, t) => { const y = 21 + 15 * Math.sin(t * .5 + ph); pod.position.y = y; boxes[1].y0 = y - 1.4; boxes[1].y1 = y + 1.4; } }; return g;
   }
-  function pavilion() {
+  function pavilion(sc) {
     const g = new THREE.Group(), cr = col(0xf3e6c8, .7), dm = col(0xf7f0de, .5), win = col(0x7a5a46, .8), gold = mGoldM;
     g.add(B(12, 4.6, 34, cr, 0, 2.3, 0, true)); for (let z = -14; z <= 14; z += 4) g.add(B(.2, 2.6, 1.7, win, 6.05, 2.4, z));
     g.add(B(12.6, .5, 34.6, col(0xc99b7a), 0, 4.85, 0));
@@ -399,7 +406,17 @@ function build() {
     [-9, 9].forEach(z => { g.add(CY(2.3, 2.3, 2.6, cr, 0, 6.2, z, 16)); g.add(onion(2.5, 3.6, dm, 0, 7.5, z)); g.add(CY(.08, .08, 1.8, gold, 0, 11.3, z, 6)); });
     [-15, 15].forEach(z => { g.add(CY(1.6, 1.6, 2.2, cr, 0, 6, z, 14)); g.add(onion(1.8, 2.8, dm, 0, 7.1, z)); });
     [[-5, -16], [-5, 16], [5, -16], [5, 16], [5, -4.5], [5, 4.5], [-5, -4.5], [-5, 4.5]].forEach(([x, z]) => { g.add(CY(.4, .5, 7.5, cr, x, 6.1, z, 10)); g.add(onion(.75, 1.6, dm, x, 9.8, z)); g.add(CY(.05, .05, 1, gold, x, 11.8, z, 5)); });
-    g.scale.setScalar(2.7); g.userData = { kind: "lm", D: 92, boxes: [] }; return g;
+    g.scale.setScalar(sc || 2.7); g.userData = { kind: "lm", D: 34 * (sc || 2.7) + 4, boxes: [] };
+    if (sc) {  // flown over: solid body and domes, bonus for clearing the top
+      const k = sc, top = 13.7 * k;
+      g.add(B(30, .12, 48, col(0x4a5260, .9), 0, .06, 0)); g.add(B(30.4, .1, .6, col(0x2f4a35, .9), 0, .1, 24)); g.add(B(30.4, .1, .6, col(0x2f4a35, .9), 0, .1, -24));
+      for (let z = -14; z <= 14; z += 4) [6.07, -6.07].forEach(x => g.add(B(.12, 2.2, 1.3, mWinG, x, 2.4, z)));
+      for (let z = -21; z <= 21; z += 7) [-13, 13].forEach(x => { g.add(SM(gBox, mLamp, x, 1.5, z, .15, 3, .15)); const bl = new THREE.Mesh(bulbG, mBulb); bl.position.set(x, 3.1, z); g.add(bl); });
+      g.userData.boxes = [{ x0: -6.3 * k, x1: 6.3 * k, y0: 0, y1: 5.1 * k, z0: -17.3 * k, z1: 17.3 * k }, { x0: -3.8 * k, x1: 3.8 * k, y0: 0, y1: top, z0: -3.8 * k, z1: 3.8 * k },
+        { x0: -2.6 * k, x1: 2.6 * k, y0: 0, y1: 11.1 * k, z0: -11.6 * k, z1: -6.4 * k }, { x0: -2.6 * k, x1: 2.6 * k, y0: 0, y1: 11.1 * k, z0: 6.4 * k, z1: 11.6 * k }];
+      g.userData.over = { x0: -6.3 * k, x1: 6.3 * k, y: top + .6, pts: 100 };
+    }
+    return g;
   }
 
   // ---------- New landmarks ----------
@@ -436,15 +453,6 @@ function build() {
     g.add(CY(.08, .08, 5, mIron, 0, by + 13.5, 0, 5)); g.add(B(2.6, 1.5, .06, col(0xc0392b, .7), 1.3, by + 15.2, 0));
     g.userData = { kind: "lm", D: 90, boxes: [] }; return g;
   }
-  function worthingStage() {
-    const g = new THREE.Group(), L = 40, w = 16;
-    g.add(B(w, .6, L, mWood, 0, 4.5, 0, true)); g.add(B(w, .3, L - .4, mIron, 0, 4.05, 0));
-    for (let z = -L / 2 + 2; z < L / 2; z += 6) [-1, 1].forEach(k => g.add(CY(.28, .36, 4.2, mIron, k * (w / 2 - .7), 2.1, z, 8)));
-    [-1, 1].forEach(k => { g.add(B(.1, .1, L, mWhite, k * (w / 2 - .1), 5.5, 0)); for (let z = -L / 2 + 1; z < L / 2; z += 3) { g.add(B(.1, 1, .1, mWhite, k * (w / 2 - .1), 5.1, z)); const b = new THREE.Mesh(bulbG, mBulb); b.position.set(k * (w / 2 - .1), 5.7, z); g.add(b); } });
-    const hp = helipad(6.2); hp.position.set(0, 4.8, 2); g.add(hp); g.add(beacon(0, 4.8, 2));
-    const sg = sign("WORTHING PIER · SANTA STOP", "#12306b", "#ffffff", 12, 2.2); sg.position.set(0, 8.4, -L / 2 + .3); g.add(sg); [-5.6, 5.6].forEach(x => g.add(CY(.12, .12, 3.4, mIron, x, 6.5, -L / 2 + .2, 6)));
-    g.userData = { kind: "lm", D: L, boxes: [{ x0: -w / 2, x1: w / 2, y0: 3.8, y1: 4.8, z0: -L / 2, z1: L / 2 }], pad: { x0: -w / 2, x1: w / 2, z0: -L / 2, z1: L / 2, stop: 14, y: 4.8, name: "Worthing Pier", pts: 200 } }; return g;
-  }
   function lancing() {
     const g = new THREE.Group(); g.add(SM(hillG, mHill, 0, -4, 0, 50, 14, 40));
     g.add(B(9, 26, 44, mStone, 0, 21, 0, true)); g.add(prism(44, 9.4, 7, mLead, 0, 34, 0));
@@ -459,14 +467,23 @@ function build() {
     const sg = sign("SHOREHAM PORT", "#2a2f3a", "#ffffff", 10, 2); sg.position.set(-26, 20, 20.1); g.add(sg);
     g.userData = { kind: "lm", D: 50, boxes: [] }; return g;
   }
-  function rsch() {
-    const g = new THREE.Group(), H = 9;
-    g.add(B(30, H, 60, mHosp, -4, H / 2, 0, true)); g.add(B(30.4, .3, 60.4, mSlate, -4, H + .1, 0));
-    for (let y = 1.6; y < H - 1; y += 2.6) { g.add(B(28, 1.2, .1, Math.random() < .5 ? mWinL : mGlass, -4, y, 30.06)); g.add(B(.1, 1.2, 58, mGlass, 11.06, y, 0)); for (let z = -26; z < 28; z += 5) if (Math.random() < .5) g.add(B(.12, 1.1, 3, mWinL, 11.07, y, z)); }
-    g.add(B(14, 30, 16, mHosp, -34, 15, -10, true)); windows(g, mGlass, -26.93, 3, 28, -16, -4, 4, 3.2); g.add(B(12, 18, 30, mBrick, -52, 9, 16));
-    const sg = sign("ROYAL SUSSEX COUNTY HOSPITAL", "#005eb8", "#ffffff", 26, 3.4); sg.position.set(-4, 5.6, 30.12); g.add(sg);
-    const hp = helipad(7); hp.position.set(-4, H, 2); g.add(hp); g.add(beacon(-4, H, 2));
-    g.userData = { kind: "lm", D: 64, boxes: [{ x0: -19, x1: 11, y0: 0, y1: H, z0: -30, z1: 30 }], pad: { x0: -11, x1: 3, z0: -22, z1: 24, stop: 12, y: H + .2, name: "the RSCH helipad", pts: 200 } }; return g;
+  // Ouse Valley Viaduct: brick arches across the flight path. Fly through an arch (the deck is too high to clear).
+  function viaduct() {
+    const g = new THREE.Group(), br = col(0xa0553f, .85), st = col(0xd9cdb5, .8), H = 10.5, D = 4;
+    g.add(SM(hillG, mHill, -95, -14, 0, 40, 20, 30)); g.add(SM(hillG, mHill, 95, -14, 0, 40, 20, 30));
+    g.add(B(150, 3, D, br, 0, H + 1.5, 0, true)); g.add(B(150.4, .6, D + .6, st, 0, H + 3.3, 0));
+    for (let x = -73; x <= 73; x += 1.6) g.add(B(.25, 1, .25, st, x, H + 4.1, D / 2));
+    g.add(B(150, .2, .2, st, 0, H + 4.6, D / 2));
+    const boxes = [{ x0: -75, x1: 75, y0: H, y1: H + 4.6, z0: -D / 2, z1: D / 2 }];
+    const arch = new THREE.TorusGeometry(2.8, .55, 6, 14, Math.PI);
+    for (let x = -70 + 3.5; x <= 70; x += 7) {
+      g.add(B(1.4, H, D, br, x, H / 2, 0)); g.add(B(1.8, .5, D + .3, st, x, 1.2, 0));
+      if (x < 70) { const a = new THREE.Mesh(arch, br); a.position.set(x + 3.5, H - 2.9, D / 2 - .3); g.add(a); const a2 = a.clone(); a2.position.z = -D / 2 + .3; g.add(a2); }
+      if (Math.abs(x) < 24) boxes.push({ x0: x - .7, x1: x + .7, y0: 0, y1: H, z0: -D / 2, z1: D / 2 });
+    }
+    [-1, 1].forEach(k => [-1, 1].forEach(z => { const px0 = k * 70; g.add(B(3, 4, 2.6, st, px0, H + 5.3, z * 1.4)); g.add(prism(2.6, 3.4, 1.6, mSlate, px0, H + 7.3, z * 1.4)); }));
+    const sg = sign("OUSE VALLEY VIADUCT", "#2a2f3a", "#ffffff", 12, 2); sg.position.set(-32, H + 6.4, D / 2 + .1); g.add(sg);
+    g.userData = { kind: "lm", D: D + 2, boxes, thru: { y: H - .7, pts: 150 } }; return g;
   }
   function sails() { const s = new THREE.Group(); for (let k = 0; k < 4; k++) { const b = new THREE.Group(); b.add(B(1.3, 8, .12, mWhite, .5, 4.4, 0)); b.add(B(.18, 8.8, .18, mWood, 0, 4.4, 0)); b.rotation.z = k * Math.PI / 2 + .3; s.add(b); } return s; }
   function windmills() {
@@ -483,42 +500,41 @@ function build() {
     const sg = sign("PRINCESS ROYAL HOSPITAL", "#005eb8", "#ffffff", 20, 3); sg.position.set(-20, 9, 27.1); g.add(sg);
     g.userData = { kind: "lm", D: 70, boxes: [] }; return g;
   }
-  function practicePad() { const g = new THREE.Group(), hp = helipad(6.5); hp.position.set(0, .4, 0); g.add(hp); g.add(beacon(0, .4, 0));
-    g.userData = { kind: "lm", D: 30, boxes: [], pad: { x0: -7, x1: 7, z0: -14, z1: 14, stop: 10, y: .6, name: "the practice helipad", pts: 0, tut: true } }; return g; }
 
-  // ---------- Route (distance along one journey: St Richard's to the Princess Royal) ----------
-  const LAP = 6300, SPZ = 190, COAST_IN = 650, COAST_OUT = 4520;
+  // ---------- Route (distance along one journey: St Richard's, the coast, Worthing, Brighton, inland to Haywards Heath) ----------
+  const LAP = 6600, SPZ = 190, COAST_IN = 700, COAST_OUT = 3680, TURN = 3680, PAV = 3950, VIA = 5900, TURN2 = 6000;
   const modeAt = d => { d = ((d % LAP) + LAP) % LAP; return d < COAST_IN || d >= COAST_OUT ? "in" : "coast"; };
+  const D2 = u => (u.D || 0) / 2;
   const add = (o, x, y, z) => { o.position.set(x, y, z); scene.add(o); things.push(o); return o; };
   const TL = [
     { at: 0, fn: z => add(stRichards(), 0, 0, z) },
     { at: 330, quiet: [250, 420], fn: z => add(cathedral(), -72, 0, z) },
-    { at: 950, quiet: [880, 1010], fn: z => add(pier({ name: "bog", xe: -22, Dd: 4.5, sign: "BOGNOR REGIS PIER" }), 0, 0, z) },
-    { at: 1500, fn: z => add(arundel(), -125, 0, z) },
-    { at: 2070, ahead: 330, quiet: [1700, 2120], calm: true, fn: z => add(worthingStage(), 0, 0, z) },
-    { at: 2100, quiet: [1700, 2120], fn: z => add(pier({ name: "w", xe: 27, Dd: 3.4 }), 0, 0, z) },
-    { at: 2600, fn: z => add(lancing(), -100, 0, z) },
-    { at: 2950, fn: z => add(shoreham(), -40, 0, z) },
-    { at: 3500, quiet: [3430, 3560], fn: z => add(westPier(), 0, 0, z) },
-    { at: 3720, quiet: [3650, 3780], fn: z => add(i360(), 0, 0, z) },
-    { at: 4150, quiet: [4070, 4260], fn: z => add(pier({ name: "b", xe: 40, Dd: 7 }), 0, 0, z) },
-    { at: 4380, quiet: [4300, 4430], fn: z => add(pavilion(), -96, 0, z) },
-    { at: 4800, ahead: 360, quiet: [4440, 4880], calm: true, fn: z => add(rsch(), 0, 0, z) },
-    { at: 5350, quiet: [5280, 5420], fn: z => add(windmills(), -42, 0, z) },
-    { at: 6060, quiet: [5930, 6160], fn: z => add(prh(), -40, 0, z) }
+    { at: 1150, fn: z => add(arundel(), -125, 0, z) },
+    { at: 2000, quiet: [1930, 2060], fn: z => add(pier({ name: "w", xe: 27, Dd: 3.4 }), 0, 0, z) },
+    { at: 2500, fn: z => add(lancing(), -100, 0, z) },
+    { at: 2850, fn: z => add(shoreham(), -40, 0, z) },
+    { at: 3400, quiet: [3330, 3580], fn: z => add(westPier(), 0, 0, z) },
+    { at: 3520, quiet: [3330, 3580], fn: z => add(i360(), 0, 0, z) },
+    { at: PAV, ahead: 230, quiet: [3680, 4030], fn: z => add(pavilion(.85), 0, 0, z) },
+    { at: 4700, fn: z => add(windmills(), -62, 0, z) },
+    { at: VIA, ahead: 230, quiet: [5700, 6020], fn: z => add(viaduct(), 0, 0, z) },
+    { at: 6400, quiet: [6270, 6500], fn: z => add(prh(), -40, 0, z) }
   ];
-  for (let i = 0; i < 6; i++) TL.push({ at: 5950 + i * 14, fn: z => { const x = Math.sin(i * .9) * 5; add(ring(), x, 6.5 + Math.cos(i * .9) * 2.5, z); } });
-  TL.push({ at: 6040, fn: z => add(goldRing(), 0, 7.5, z) });
+  for (let i = 0; i < 6; i++) TL.push({ at: 6290 + i * 14, fn: z => { const x = Math.sin(i * .9) * 5; add(ring(), x, 6.5 + Math.cos(i * .9) * 2.5, z); } });
+  TL.push({ at: 6380, fn: z => add(goldRing(), 0, 7.5, z) });
   TL.forEach(e => { e.ahead = e.ahead || SPZ; }); TL.sort((a, b) => (a.at - a.ahead) - (b.at - b.ahead));
   const PASS = [
-    { at: 0, text: "St Richard's Hospital, Chichester · take off!" }, { at: 330, text: "Chichester Cathedral" }, { at: 700, text: "Out to the coast" }, { at: 950, text: "Bognor Regis Pier" },
-    { at: 1500, text: "Littlehampton · Arundel Castle to the north" }, { at: 1720, text: "Worthing ahead · land on the pier" }, { at: 2600, text: "Lancing College Chapel" },
-    { at: 2950, text: "Shoreham Port" }, { at: 3250, text: "Hove seafront" }, { at: 3500, text: "West Pier (ruins)" }, { at: 3720, text: "The i360" }, { at: 4150, text: "Brighton Palace Pier" },
-    { at: 4380, text: "The Royal Pavilion" }, { at: 4460, text: "Kemp Town · land on the RSCH helipad" }, { at: 5350, text: "Jack and Jill windmills, Clayton" }, { at: 5650, text: "Over Ditchling Beacon" },
-    { at: 6060, text: "Princess Royal Hospital · journey complete +250", bonus: 250 }, { at: 6200, text: "Back to Chichester for another lap" }
+    { at: 0, text: "St Richard's Hospital, Chichester" }, { at: 330, text: "Chichester Cathedral" }, { at: 700, text: "Out to the coast at Middleton-on-Sea" },
+    { at: 1150, text: "Littlehampton · Arundel Castle to the north" }, { at: 1500, text: "Rustington and East Preston" }, { at: 1850, text: "Worthing" }, { at: 2000, text: "Worthing Pier" },
+    { at: 2500, text: "Lancing College Chapel" }, { at: 2850, text: "Shoreham-by-Sea" }, { at: 3150, text: "Hove seafront" }, { at: 3400, text: "West Pier (ruins)" }, { at: 3520, text: "The i360" },
+    { at: TURN, text: "Brighton · turning left, inland", turn: true }, { at: PAV - 200, text: "Climb over the Royal Pavilion!" }, { at: 4350, text: "Falmer" },
+    { at: 4700, text: "Jack and Jill windmills over to the west" }, { at: 4950, text: "Past Ditchling Beacon" }, { at: 5250, text: "Wivelsfield" }, { at: 5500, text: "Scaynes Hill" },
+    { at: VIA - 220, text: "Ouse Valley Viaduct ahead · fly through an arch!" }, { at: TURN2, text: "Turning left for Haywards Heath", turn: true },
+    { at: 6400, text: "Princess Royal Hospital, Haywards Heath · journey complete +250", bonus: 250 }, { at: 6540, text: "Back to Chichester for another lap" }
   ];
-  const LOC = [[0, "Chichester"], [650, "West Sussex coast"], [900, "Bognor Regis"], [1400, "Littlehampton"], [1750, "Worthing"], [2450, "Lancing"], [2850, "Shoreham-by-Sea"], [3250, "Hove"], [3600, "Brighton"], [4460, "Kemp Town"], [4950, "South Downs"], [5800, "Haywards Heath"]];
-  const STOPS = [[0, "St Richard's"], [2070, "Worthing ↓"], [3720, "i360"], [4150, "Palace Pier"], [4800, "RSCH ↓"], [6060, "Princess Royal"]];
+  const LOC = [[0, "Chichester"], [700, "Middleton-on-Sea"], [1050, "Littlehampton"], [1450, "Rustington"], [1800, "Worthing"], [2350, "Lancing"], [2750, "Shoreham-by-Sea"], [3100, "Hove"], [3350, "Brighton"],
+    [4300, "Falmer"], [4850, "Ditchling"], [5200, "Wivelsfield"], [5450, "Scaynes Hill"], [5750, "Ouse Valley"], [6050, "Haywards Heath"]];
+  const STOPS = [[0, "St Richard's"], [2000, "Worthing Pier"], [3460, "i360"], [PAV, "Pavilion"], [VIA, "Viaduct"], [6400, "Princess Royal"]];
   STOPS.forEach((s, i) => { const b = document.createElement("b"), u = document.createElement("u"); b.style.left = u.style.left = (s[0] / LAP * 100) + "%"; u.textContent = s[1]; if (i % 2) u.className = "up"; $("route").append(b, u); });
   const esc = t => String(t == null ? "" : t).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
   function loadBoard() { const el = $("board"); if (!el || typeof sb === "undefined") return; try { Promise.resolve(sb.rpc("get_coast_weekly", { p_weeks_ago: 0 })).then(r => { const d = (r && r.data) || []; if (dead || !el.isConnected) return;
@@ -526,6 +542,7 @@ function build() {
 
   // ---------- Spawning ----------
   const BX = 16, BYMIN = 1.6, BYMAX = 13;
+  const ceil = () => (!tut && lapD > PAV - 260 && lapD < PAV + 60 ? 17 : BYMAX);
   let lapOff = 0, li = 0, lapS = 0, pi = 0, lapNo = 1;
   const zoneAt = P => { P = ((P % LAP) + LAP) % LAP; return TL.find(e => e.quiet && P >= e.quiet[0] && P <= e.quiet[1]); };
   // landmarks come in on an absolute schedule so the next lap's St Richard's is already in place when a lap ends
@@ -548,17 +565,18 @@ function build() {
   }
 
   // ---------- State and controls ----------
-  let trick = 0, rollDir = 1, surge = 0, sparks = null, bt = 0, ldg = null, appr = null, tut = null;
+  let turnT = 0, pavDone = false, trick = 0, rollDir = 1, surge = 0, sparks = null, bt = 0, ldg = null, appr = null, tut = null;
+  const ahG = $("ahg"), ahS = $("ahs"), ahA = $("aha"); let ahN = 0;
   const REST = 1.45, landEl = $("land"), tutEl = $("tut"), tutGo = $("tutgo"), keyEls = Array.from(root.querySelectorAll("[data-k]"));
   let speed, dist, score, hearts, boost, alive, running = false, t = 0, best = 0, nextAt, invul, shake, boosting = false, combo, tx = 0, ty = 6, px = 0, py = 6;
   try { best = +localStorage.getItem("cfbest") || 0; } catch (e) {}
   bestEl.textContent = "Best " + best;
   const heartsTxt = () => { hpEl.textContent = "\u2665".repeat(Math.max(0, hearts)) + "\u2661".repeat(Math.max(0, 3 - hearts)); };
   function showBanner(txt) { bnEl.textContent = txt; bnEl.classList.add("on"); clearTimeout(bt); bt = setTimeout(() => bnEl.classList.remove("on"), 3000); }
-  function reset() { things.forEach(o => scene.remove(o)); things.length = 0; speed = 28; dist = 0; score = 0; hearts = 3; boost = 1; alive = true; nextAt = 40; invul = 0; shake = 0; combo = 0; trick = 0; surge = 0; trickG.rotation.set(0, 0, 0); tx = 0; ty = REST; px = 0; py = REST; player.position.set(0, REST, 0); lapOff = 0; li = 0; lapS = 0; pi = 0; lapNo = 1; lapD = 0; ldg = null; appr = null; speed = 0; nextAt = 150;
+  function reset() { things.forEach(o => scene.remove(o)); things.length = 0; speed = 28; dist = 0; score = 0; hearts = 3; boost = 1; alive = true; nextAt = 40; invul = 0; shake = 0; combo = 0; trick = 0; surge = 0; trickG.rotation.set(0, 0, 0); tx = 0; ty = 6; px = 0; py = 6; player.position.set(0, 6, 0); lapOff = 0; li = 0; lapS = 0; pi = 0; lapNo = 1; lapD = 0; ldg = null; appr = null; speed = 30; nextAt = 150; turnT = 0; pavDone = false;
     bnEl.classList.remove("on"); landEl.style.display = "none"; heartsTxt(); spawnTL(); segs.forEach(sg => setMode(sg)); }
-  // The seafront terraces open up where an inland landmark should be in view (Arundel, Lancing, Shoreham, the Royal Pavilion).
-  const VIEW = [[1330, 1560], [2420, 2640], [2780, 3000], [4250, 4420]];
+  // The seafront terraces open up where an inland landmark should be in view (Arundel, Lancing, Shoreham).
+  const VIEW = [[1040, 1260], [2320, 2540], [2680, 2900]];
   function setMode(sg) { const d = lapD - sg.position.z, inl = modeAt(d) === "in", m = ((d % LAP) + LAP) % LAP, open = VIEW.some(([a, b]) => m + SEG / 2 >= a && m - SEG / 2 <= b);
     sg.userData.coast.visible = !inl; sg.userData.inland.visible = inl; sg.userData.terr.forEach(t => { t.visible = !open; }); }
   const keys = {};
@@ -566,8 +584,8 @@ function build() {
   const keyVis = (k, v) => keyEls.forEach(el => { if (el.dataset.k === k) el.classList.toggle("on", v); });
   on(window, "keydown", e => { const k = e.key.toLowerCase(); keys[k] = true; keyVis(k, true);
     if (k === " " || k === "enter") { e.preventDefault(); if (e.repeat && !ov.hidden) return;
-      if (!ov.hidden) { if (k === " " && !tutGo.hidden) tutGo.click(); else $("go").click(); return; }
-      if (k === "enter" && tut) { startReal(); return; } if (k === " ") boosting = true; }
+      if (!ov.hidden) { if (!tutGo.hidden && (k === " " || $("go").hidden)) tutGo.click(); else $("go").click(); return; }
+      if (k === "enter" && tut && OPTS.canSkip) { startReal(); return; } if (k === " ") boosting = true; }
     if (k.startsWith("arrow")) e.preventDefault(); });
   on(window, "keyup", e => { const k = e.key.toLowerCase(); keys[k] = false; keyVis(k, false); if (k === " ") boosting = false; });
   on(window, "blur", () => { for (const k in keys) keys[k] = false; boosting = false; keyEls.forEach(el => el.classList.remove("on")); });
@@ -639,13 +657,11 @@ function build() {
   // ---------- Tutorial (practice flight before the real one; nothing is scored) ----------
   const STEER = ["a", "d", "arrowleft", "arrowright"], PITCH = ["w", "s", "arrowup", "arrowdown"];
   const TUT = [
-    { txt: "Santa takes off from the St Richard's helipad", keys: [], lift: true },
     { txt: "Steer left and right: \u2190 \u2192 or A D", keys: STEER, need: { l: .45, r: .45 } },
     { txt: "Climb and dive: \u2191 \u2193 or W S", keys: PITCH, need: { u: .45, d: .45 } },
     { txt: "Hold SPACE to boost", keys: [" "], need: { b: 1 } },
     { txt: "Fly through the wreath", keys: STEER.concat(PITCH), spawn: "ring" },
     { txt: "Golden wreath: aileron roll and a speed surge", keys: STEER.concat(PITCH), spawn: "gold" },
-    { txt: "Landing: line up over the H and dive \u2193 to touch down", keys: STEER.concat(PITCH), spawn: "pad" },
     { txt: "Dodge pylons and gulls. Too low and you'll hear PULL UP", keys: STEER.concat(PITCH), spawn: "hazard", wait: 5 },
     { txt: "Tutorial complete. Real flight starting\u2026", keys: [], wait: 2.2, end: true }
   ];
@@ -655,7 +671,6 @@ function build() {
     keyEls.forEach(el => el.classList.toggle("hl", st.keys.indexOf(el.dataset.k) >= 0));
     if (st.spawn === "ring") add(ring(), rnd(-6, 6), rnd(5, 9), -150).userData.tut = true;
     else if (st.spawn === "gold") add(goldRing(), rnd(-5, 5), rnd(6, 9), -150).userData.tut = true;
-    else if (st.spawn === "pad") add(practicePad(), rnd(-6, 6), 0, -300);
     else if (st.spawn === "hazard") { const gap = 1 + Math.floor(Math.random() * 4); for (let k = 0; k < 6; k++) if (k !== gap) add(pylon(11), -12.5 + k * 5, 0, -170); for (let k = 0; k < 3; k++) add(gull(), rnd(-12, 12), rnd(4, 10), -260 - k * 10); }
   }
   const tutNext = () => { $("tbar").style.width = "100%"; if (tut) tut.after = .5; };
@@ -664,10 +679,9 @@ function build() {
     const st = TUT[tut.i]; tut.t += dt;
     if (tut.after > 0) { tut.after -= dt; if (tut.after <= 0) { if (tut.i + 1 < TUT.length) tutEnter(tut.i + 1); } return; }
     if (tut.retry > 0) { tut.retry -= dt; if (tut.retry <= 0) tutEnter(tut.i); return; }
-    if (st.lift) { if (!ldg && tut.t > 1) tutNext(); }
-    else if (st.need) { if (kx < 0) tut.l += dt; if (kx > 0) tut.r += dt; if (ky > 0) tut.u += dt; if (ky < 0) tut.d += dt; if (boosting) tut.b += dt;
+    if (st.need) { if (kx < 0) tut.l += dt; if (kx > 0) tut.r += dt; if (ky > 0) tut.u += dt; if (ky < 0) tut.d += dt; if (boosting) tut.b += dt;
       let f = 0, n = 0; for (const k in st.need) { f += Math.min(1, tut[k] / st.need[k]); n++; } $("tbar").style.width = Math.round(f / n * 100) + "%"; if (f / n >= 1) tutNext(); }
-    else if (st.wait) { $("tbar").style.width = Math.min(100, tut.t / st.wait * 100) + "%"; if (tut.t >= st.wait) { if (st.end) startReal(); else tutNext(); } }
+    else if (st.wait) { $("tbar").style.width = Math.min(100, tut.t / st.wait * 100) + "%"; if (tut.t >= st.wait) { if (st.end) { try { OPTS.onTutorialDone && OPTS.onTutorialDone(); } catch (e) {} startReal(); } else tutNext(); } }
   }
   let last = performance.now(), lapD = 0, locNow = "";
   function frame(now) {
@@ -676,7 +690,8 @@ function build() {
     const run = running && alive;
     if (run) {
       const kx = (keys.arrowright || keys.d ? 1 : 0) - (keys.arrowleft || keys.a ? 1 : 0), ky = (keys.arrowup || keys.w ? 1 : 0) - (keys.arrowdown || keys.s ? 1 : 0);
-      if ((kx || ky) && !ldg) { tx = Math.max(-BX, Math.min(BX, tx + kx * dt * 20)); ty = Math.max(BYMIN, Math.min(BYMAX, ty + ky * dt * 11)); }
+      if ((kx || ky) && !ldg) { tx = Math.max(-BX, Math.min(BX, tx + kx * dt * 20)); ty = Math.max(BYMIN, Math.min(ceil(), ty + ky * dt * 11)); }
+      if (ty > ceil()) ty = Math.max(ceil(), ty - dt * 4);
       let target = 30 + Math.min(22, dist / 60);
       if (ldg) {
         // touchdown: stop on the pad, deliver, then lift straight up before flying on
@@ -695,7 +710,7 @@ function build() {
         dist += speed * dt; nextAt -= speed * dt; lapD = dist - lapOff;
         if (lapD >= LAP) { lapOff += LAP; lapD -= LAP; pi = 0; lapNo++; }
         spawnTL();
-        while (pi < PASS.length && lapD >= PASS[pi].at) { const p = PASS[pi++]; showBanner(p.text + (p.at === 0 && lapNo > 1 ? " \u00b7 lap " + lapNo : "")); if (p.bonus) bonus = (bonus || 0) + p.bonus; }
+        while (pi < PASS.length && lapD >= PASS[pi].at) { const p = PASS[pi++]; if (p.turn) turnT = 2.6; showBanner(p.text + (p.at === 0 && lapNo > 1 ? " \u00b7 lap " + lapNo : "")); if (p.bonus) bonus = (bonus || 0) + p.bonus; }
         if (nextAt <= 0) { spawn(lapD); nextAt = 38 + Math.random() * 16 - Math.min(16, dist / 150); }
         let ln = LOC[0][1]; LOC.forEach(l => { if (lapD >= l[0]) ln = l[1]; }); if (ln !== locNow) { locNow = ln; locEl.textContent = ln; }
         rdot.style.left = (lapD / LAP * 100) + "%";
@@ -703,7 +718,7 @@ function build() {
       }
       // landing guidance
       if (appr && !ldg) { const p = appr.p, cx = appr.o.position.x + (p.x0 + p.x1) / 2, ex = cx - px, ey = p.y + 1.4 - py;
-        const arr = (ex < -1.5 ? "\u2190" : ex > 1.5 ? "\u2192" : "") + (ey < -.8 ? "\u2193" : ey > 1.6 ? "\u2191" : "");
+        const arr = [ex < -1.5 ? "\u2190 LEFT" : ex > 1.5 ? "RIGHT \u2192" : "", ey < -.8 ? "DESCEND: \u2191/W" : ey > 1.6 ? "CLIMB: \u2193/S" : ""].filter(Boolean).join(" \u00b7 ");
         landEl.innerHTML = "LAND ON " + esc(p.name).toUpperCase() + "<em>" + (arr || "\u2713") + "</em>"; landEl.style.display = "block"; }
       else if (ldg) { landEl.innerHTML = ldg.stage === "lift" ? "TAKE OFF" : "TOUCHDOWN"; landEl.style.display = "block"; }
       else landEl.style.display = "none";
@@ -717,7 +732,13 @@ function build() {
     px += (tx - px) * Math.min(1, dt * 7); py += (ty - py) * Math.min(1, dt * 7); gpws(dt, py < 2.3 && !appr && !ldg, running && alive);
     const vx = (tx - px), vy = (ty - py);
     player.position.set(px, py + (ldg || !running ? 0 : Math.sin(t * 3) * .12), 0);
-    robot.rotation.z = -vx * .09; player.rotation.x = vy * .05; player.rotation.z = -vx * .05;
+    // the left turn inland at Brighton: Santa banks left and the view swings round with him
+    let turnK = 0; if (turnT > 0) { turnT = Math.max(0, turnT - dt); turnK = Math.sin(Math.PI * (1 - turnT / 2.6)); }
+    robot.rotation.z = -vx * .09 + turnK * .55; player.rotation.x = vy * .05; player.rotation.z = -vx * .05;
+    // artificial horizon: the horizon turns against the sleigh's bank (and spins with the aileron roll) and drops as the nose rises
+    { const bankDeg = ((robot.rotation.z + player.rotation.z) * 2.4 + trickG.rotation.z) * 180 / Math.PI, pitchDeg = Math.max(-25, Math.min(25, vy * 2.6));   // bank and climb exaggerated so they read clearly
+      ahG.setAttribute("transform", "rotate(" + bankDeg.toFixed(1) + ") translate(0 " + (pitchDeg * 1.2).toFixed(1) + ")");
+      if ((ahN = (ahN + 1) % 6) === 0) { ahS.textContent = Math.round(speed * 2.2) + " mph"; ahA.textContent = Math.round(py * 120) + " ft"; } }
     head.rotation.y = Math.sin(t * .9) * .12; head.rotation.x = Math.sin(t * 1.3) * .06;
     aL.up.rotation.x = 1.15 + Math.sin(t * 7) * .25; aR.up.rotation.x = 1.15 + Math.sin(t * 7 + .6) * .25;
     const bo = (surge > 0 || (boosting && boost > 0)) && run; AU.fly(mv, bo, run); if (bo && !boWas) AU.boost(); boWas = bo; flames.forEach((f, i) => { const k = (bo ? 1.7 : 1) * (1 + Math.sin(t * 40 + i) * .12 + Math.random() * .1); f.scale.set(1, k, 1); }); jetL.intensity = (bo ? 2.6 : 1.4) + Math.random() * .4;
@@ -745,10 +766,12 @@ function build() {
       else if (u.kind === "gull") { if (dz < 1.5 && Math.hypot(dx, dy * 1.5) < 2.0) hurt(); }
       else if (u.kind === "lm") {
         const lz = -o.position.z;
+        if (u.thru && !u.thru.done && lz < -D2(u)) { u.thru.done = true; if (py < u.thru.y && invul <= 0) { bonus = (bonus || 0) + u.thru.pts; AU.bonus(); showBanner("Through the Ouse Valley Viaduct +" + u.thru.pts); } }
+        if (u.over && !u.over.done && lz < 0) { u.over.done = true; if (px > o.position.x + u.over.x0 && px < o.position.x + u.over.x1 && py > u.over.y) { bonus = (bonus || 0) + u.over.pts; AU.bonus(); showBanner("Over the Royal Pavilion +" + u.over.pts); } }
         if (u.pad && !u.pad.done) { const p = u.pad, x0 = o.position.x + p.x0, x1 = o.position.x + p.x1;
           if (lz > p.z1) { if (lz < p.z1 + 340 && !ldg) apprNext = { p, o }; }
           else if (lz >= p.z0 + p.stop) { if (!ldg) { apprNext = { p, o }; if (px > x0 && px < x1 && py < p.y + 2.6 && py > p.y - .5) { p.done = true; apprNext = null; ldg = { stage: "stop", t: 0, y: p.y, cx: Math.max(x0 + 1, Math.min(x1 - 1, px)), pts: p.pts, name: p.name, tut: p.tut }; AU.cap(); combo = 0; } } }
-          else { p.done = true; AU.miss(); if (p.tut) tutRetry("Missed the pad. Line up and dive \u2193 sooner"); else showBanner("Missed the landing at " + p.name + " \u00b7 no bonus"); } }
+          else { p.done = true; AU.miss(); if (p.tut) tutRetry("Missed the pad. Line up and push forward (\u2191/W) sooner"); else showBanner("Missed the landing at " + p.name + " \u00b7 no bonus"); } }
         if (ldg) continue;
         for (const b of u.boxes) { if (lz > b.z0 - .8 && lz < b.z1 + .8 && px > b.x0 - .8 && px < b.x1 + .8 && py > b.y0 - .7 && py < b.y1 + .7) { hurt(); break; } }
         if (u.under && !u.underDone && lz > u.under.z0 && lz < u.under.z1 && px > u.under.x0 && px < u.under.x1 && py < 3.0) { u.underDone = true; AU.bonus(); bonus += u.under.pts; showBanner("Under the pier +" + u.under.pts); }
@@ -768,17 +791,18 @@ function build() {
     shake = Math.max(0, shake - dt);
     // chase camera: directly behind Santa, a little above so the reindeer team shows over the sleigh
     cam.position.set(px * .9 + (shake ? (Math.random() - .5) * shake : 0), py * .7 + 6.4 + (shake ? (Math.random() - .5) * shake : 0), 12.5);
-    cam.lookAt(px * .9, py * .8 - .6, -16);
+    cam.lookAt(px * .9, py * .8 - .6, -16); if (turnK) cam.rotateY(turnK * .42);
     sky.position.x = cam.position.x;
     renderer.render(scene, cam);
   }
   window.__xmasLive = () => (running && alive && !tut ? score : 0);
-  function takeOff() { ldg = { stage: "lift", t: 0, y: REST - 1.05 }; ty = 6.6; }
   // The real flight (and the competition clock) starts here.
-  function startReal() { AU.init(); tut = null; tutEl.hidden = true; keyEls.forEach(el => el.classList.remove("hl")); bonus = 0; things.forEach(o => scene.remove(o)); things.length = 0; reset(); running = true; ov.hidden = true; takeOff();
+  function startReal() { AU.init(); tut = null; tutEl.hidden = true; keyEls.forEach(el => el.classList.remove("hl")); bonus = 0; things.forEach(o => scene.remove(o)); things.length = 0; reset(); running = true; ov.hidden = true;
     try { window.__xmasGameStart && window.__xmasGameStart("flight"); } catch (e) {} }
-  function startTut() { AU.init(); bonus = 0; reset(); running = true; ov.hidden = true; tut = {}; tutEl.hidden = false; takeOff(); tutEnter(0); scEl.textContent = "Practice"; }
+  function startTut() { AU.init(); bonus = 0; reset(); running = true; ov.hidden = true; tut = {}; tutEl.hidden = false; tutEnter(0); scEl.textContent = "Practice"; }
   $("go").onclick = startReal; tutGo.onclick = startTut;
+  // the tutorial can only be skipped when the page allows it (admin testing, or a player who has already done it)
+  $("go").hidden = !OPTS.canSkip; if (OPTS.canSkip) $("tnote").textContent = "Practice only: nothing is scored. Enter skips to the real flight.";
   loadBoard();
   reset(); last = performance.now(); raf = requestAnimationFrame(frame);
   return function close() {
@@ -792,8 +816,10 @@ function ensureThree(cb, fail) {
   const s = document.createElement("script"); s.src = "vendor/three-r128.min.js?v=r128"; s.onload = cb; s.onerror = fail; document.head.appendChild(s);
 }
 function onKeyEsc(e) { if (e.key === "Escape" && root) { e.preventDefault(); e.stopPropagation(); closeGame(); } }
-function open() {
+let OPTS = {};
+function open(opts) {
   if (window.__pdOpen || loading) return;
+  OPTS = opts || {};
   window.__pdOpen = true; loading = true;
   if (!document.getElementById("cfCss")) { const st = document.createElement("style"); st.id = "cfCss"; st.textContent = CSS; document.head.appendChild(st); }
   root = document.createElement("div"); root.id = "cfRoot"; root.setAttribute("role", "dialog"); root.setAttribute("aria-modal", "true"); root.setAttribute("aria-label", "Sleigh Flight");

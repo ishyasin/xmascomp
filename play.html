@@ -10,11 +10,6 @@
 <body>
 <header class="top">
   <div class="wrap">
-    <a class="edg" href="index.html" aria-label="Back to the homepage">
-      <span class="mark">ED<span class="amp">&amp;</span>G<span class="tm">™</span></span>
-      <span class="name">Evolve Digital &amp; Governance</span>
-      <span class="rule"><span></span><span></span><span></span></span>
-    </a>
     <span id="who" style="font-weight:700"></span>
   </div>
 </header>
@@ -38,7 +33,7 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const GAME = {
     flight: { file: "games/reindeer-flight.js", global: "XmasSleigh", live: () => (window.__xmasLive ? window.__xmasLive() : 0), clockOnTakeOff: true,
-      how: ["Keyboard only: steer with the arrow keys or WASD, hold Space to boost.", "Start with the short practice tutorial, or skip it. Your clock starts when you take off for real.", "Land on Worthing Pier and the Royal Sussex County helipad for bonus points. Fly through wreaths; a golden wreath does an aileron roll.", "Fly as many times as you like. Your best flight counts."] },
+      how: ["Keyboard only: \u2191 or W climbs, \u2193 or S dives, \u2190 \u2192 or A D steer. Hold Space to boost.", "A short practice tutorial comes first. Your clock starts when the real flight begins.", "From St Richard's along the coast past Worthing Pier, the West Pier and the i360, then inland over the Royal Pavilion (climb over it for a bonus) to the Princess Royal. Fly through wreaths; a golden wreath does an aileron roll.", "Fly as many times as you like. Your best flight counts."] },
     grotto: { file: "games/grotto-dash.js", global: "XmasGrotto", live: () => (window.XmasGrotto && window.XmasGrotto.live ? window.XmasGrotto.live() : 0),
       how: ["Gift tags come along the belt.", "Press ← for Chichester & West, ↓ for Worthing & Coast, → for Horsham & North (or tap the sacks).", "Three wrong sacks ends a game.", "Play as many times as you like. Your best game counts."] },
     quiz: { how: ["One question at a time.", "Pick one answer. Your first answer is the one that counts.", "Answer as many as you can before the time runs out."] }
@@ -137,12 +132,14 @@
       steps(),
       el("p", { class: "eyebrow" }, "Round " + (R.step + 1) + " of " + ev.rounds.length),
       el("h1", {}, info.name),
-      el("p", {}, resumed ? "Your clock for this round is still running." : "You have " + mins + (mins === 1 ? " minute" : " minutes") + (GAME[key] && GAME[key].clockOnTakeOff ? ". The clock starts when you take off for real, after the practice tutorial." : ". The clock starts when you press the button.")),
+      el("p", {}, resumed ? "Your clock for this round is still running." : "You have " + mins + (mins === 1 ? " minute" : " minutes") + (GAME[key] && GAME[key].clockOnTakeOff ? ". The clock starts when the real flight begins, after the practice tutorial." : ". The clock starts when you press the button.")),
       el("ul", { class: "howto" }, GAME[key].how.map(t => el("li", {}, t))),
       el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: e => { e.target.disabled = true; key === "quiz" ? quiz() : game(key); } }, resumed ? "Back to " + info.name : "Start " + info.name))
     );
   }
 
+  // Reindeer Flight: the tutorial is compulsory the first time; a player who has finished it may skip it if they reopen the game.
+  const gameOpts = key => (key === "flight" ? { canSkip: !!R.flightTut, onTutorialDone: () => { R.flightTut = true; save(); } } : undefined);
   async function game(key) {
     const g = GAME[key];
     try { if (!window[g.global]) await loadScript(g.file); } catch (e) { return errorPanel(e.message); }
@@ -155,11 +152,11 @@
         if (deadline - performance.now() <= 0) return roundOver(key);
         startTimer(() => roundOver(key));
       };
-      window[g.global].open();
+      window[g.global].open(gameOpts(key));
     } else {
       try { await beginRound(key); } catch (e) { return errorPanel(e.message); }
       if (deadline - performance.now() <= 0) return roundOver(key);
-      window[g.global].open();
+      window[g.global].open(gameOpts(key));
       startTimer(() => roundOver(key));
     }
     watchId = setInterval(() => { if (!window.__pdOpen && !ending) { clearInterval(watchId); clearInterval(pollId); if (R.started && R.started[key]) paused(key); else { armed = null; intro(); } } }, 400);
@@ -201,8 +198,14 @@
     R.quizRight = R.quizRight || 0; R.quizDone = R.quizDone || 0;
     ask();
   }
+  // One question at a time. Every question has its own countdown (timed by the server). Picture questions start
+  // covered; the server releases tiles one by one, and the sooner a right answer arrives the more it scores.
+  let qClean = [];
+  const clearQ = () => { qClean.forEach(f => f()); qClean = []; };
+  const worthNow = (pts, el, lim) => { const shown = Math.min(20, 1 + Math.floor(19 * Math.max(0, el) / lim)); return Math.max(Math.ceil(pts * .1), Math.round(pts * (20 - shown) / 19)); };
   async function ask() {
     if (ending) return;
+    clearQ();
     let q;
     try { const rows = await XQ.rpc("next_question", auth()); q = Array.isArray(rows) ? rows[0] : rows; }
     catch (e) { if (/time is up/i.test(e.message)) return quizOver(); return errorPanel(e.message); }
@@ -211,9 +214,46 @@
         return render(steps(), el("h1", {}, "The Christmas Quiz"), el("p", {}, "No quiz questions have been added yet, so this round is skipped."), el("div", { class: "actions" }, el("button", { class: "btn", type: "button", onclick: intro }, "Continue"))); }
       return quizOver();
     }
+    const lim = q.time_limit, t0 = performance.now() - (lim - Number(q.seconds_left)) * 1000, elapsed = () => (performance.now() - t0) / 1000;
+    let answered = false;
     const fb = el("p", { class: "feedback", role: "status" }), next = el("div", { class: "actions" });
+    const bar = el("i"), secs = el("span", { class: "qsecs" }), clock = el("div", { class: "qtime", role: "timer", "aria-label": "Time left for this question" }, el("div", { class: "track" }, bar), secs);
+    const worth = el("span", {}, q.points + " points");
     const opts = q.options.map(o => { const b = el("button", { class: "opt", type: "button" }, o.text); b.dataset.i = o.i; b.addEventListener("click", () => answer(o.i, b)); return b; });
+
+    // picture: canvas for the uncovered tiles, wrapping-paper covers on top
+    let pic = null, have = [], tileTimer = null, cvs = null, ctx = null, covers = [];
+    const drawTile = t => { const img = new Image(); img.onload = () => { const c = t.idx % 5, r = Math.floor(t.idx / 5); ctx.drawImage(img, c * 160, r * 125, 160, 125); covers[t.idx].classList.add("gone"); }; img.src = t.data; };
+    async function fetchTiles() {
+      try { const rows = await XQ.rpc("quiz_tiles", Object.assign(auth(), { p_question: q.id, p_have: have })) || [];
+        rows.forEach(t => { if (have.indexOf(t.idx) < 0) { have.push(t.idx); drawTile(t); } }); } catch (e) {}
+    }
+    function scheduleTiles() {
+      if (answered) return;
+      // the k-th tile is uncovered at (k - 1) / 19 of the time; ask again just after the next one is due
+      const k = Math.min(20, 1 + Math.floor(19 * elapsed() / lim)), nextAt = k >= 20 ? null : (k * lim / 19);
+      if (nextAt === null) return;
+      tileTimer = setTimeout(async () => { await fetchTiles(); scheduleTiles(); }, Math.max(250, (nextAt - elapsed()) * 1000 + 150));
+    }
+    if (q.kind === "image") {
+      cvs = el("canvas", { width: "800", height: "500", role: "img", "aria-label": "Picture to guess, partly covered" }); ctx = cvs.getContext("2d");
+      const cov = el("div", { class: "covers" }); for (let i = 0; i < 20; i++) { const c = el("span", {}, "?"); covers.push(c); cov.appendChild(c); }
+      pic = el("div", { class: "pic" }, cvs, cov);
+      fetchTiles().then(scheduleTiles);
+      qClean.push(() => clearTimeout(tileTimer));
+    }
+
+    const tick = () => {
+      const left = Math.max(0, lim - elapsed());
+      bar.style.width = (left / lim * 100) + "%"; clock.classList.toggle("warn", left <= 5);
+      secs.textContent = Math.ceil(left) + "s";
+      if (q.kind === "image" && !answered) worth.textContent = "Worth " + worthNow(q.points, elapsed(), lim) + " points now";
+      if (left <= 0 && !answered) answer(null, null);
+    };
+    const tickId = setInterval(tick, 100); qClean.push(() => clearInterval(tickId)); tick();
+
     async function answer(i, btn) {
+      if (answered) return; answered = true; clearInterval(tickId); clearTimeout(tileTimer);
       opts.forEach(b => { b.disabled = true; });
       try {
         const rows = await XQ.rpc("submit_quiz_answer", Object.assign(auth(), { p_question: q.id, p_choice: i }));
@@ -221,22 +261,24 @@
         R.quizDone += 1; if (a.correct) R.quizRight += 1; save();
         const right = opts.find(b => Number(b.dataset.i) === a.correct_index);
         if (right) right.classList.add("right");
-        if (!a.correct) btn.classList.add("wrong");
+        if (!a.correct && btn) btn.classList.add("wrong");
         fb.className = "feedback " + (a.correct ? "ok" : "no");
-        fb.textContent = a.correct ? "Correct!" : "Not quite. The answer was: " + (right ? right.textContent : "");
+        fb.textContent = a.correct ? "Correct! +" + a.awarded + " points" : (a.timed_out ? "Time's up. " : "Not quite. ") + "The answer was: " + (right ? right.textContent : "");
+        worth.textContent = q.points + " points";
+        if (q.kind === "image") fetchTiles();   // the whole picture, now it's answered
       } catch (e) {
         if (/time is up/i.test(e.message)) return quizOver();
-        fb.className = "feedback no"; fb.textContent = e.message; opts.forEach(b => { b.disabled = false; }); return;
+        fb.className = "feedback no"; fb.textContent = e.message; return;
       }
       const lastQ = q.number >= q.total;
       const b = el("button", { class: "btn", type: "button", onclick: () => (lastQ ? quizOver() : ask()) }, lastQ ? "Finish the quiz" : "Next question");
       next.appendChild(b); b.focus();
     }
-    render(steps(), el("div", { class: "qhead" }, el("span", {}, "Question " + q.number + " of " + q.total), el("span", {}, q.points + " points")),
-      el("h1", { class: "qtext" }, q.question), el("div", { class: "opts" }, opts), fb, next);
+    render(steps(), el("div", { class: "qhead" }, el("span", {}, (q.kind === "image" ? "Picture round · " : "") + "Question " + q.number + " of " + q.total), worth),
+      clock, el("h1", { class: "qtext" }, q.question), pic || "", el("div", { class: "opts" }, opts), fb, next);
   }
   async function quizOver() {
-    if (ending) return; ending = true; stopTimer();
+    if (ending) return; ending = true; stopTimer(); clearQ();
     try { await XQ.rpc("end_round", Object.assign(auth(), { p_round: "quiz" })); } catch (e) {}
     const last = R.step === ev.rounds.length - 1;
     R.step += 1; save();
@@ -255,12 +297,13 @@
     const boxes = ev.rounds.map(k => el("div", {}, el("span", {}, XQ.ROUNDS[k].name), el("strong", {}, (res[XQ.ROUNDS[k].col] || 0).toLocaleString("en-GB"))));
     boxes.push(el("div", { class: "big" }, el("span", {}, "Total"), el("strong", {}, (res.total || 0).toLocaleString("en-GB"))));
     const table = el("table", { class: "compact" }, el("caption", { class: "sr-only" }, "Top 20 scores"), el("thead", {}, el("tr")), el("tbody"));
+    const shown = res.place != null;   // placings stay hidden until the results are revealed
     render(el("p", { class: "eyebrow" }, "All done"), el("h1", {}, "Well played, " + (R.name || "you") + "!"),
-      el("p", {}, "You are number " + res.place + " on the leaderboard."),
+      el("p", {}, shown ? "You are number " + res.place + " on the leaderboard." : "The results will be revealed on the homepage once the competition closes."),
       el("div", { class: "scores" }, boxes),
-      el("div", { class: "board" }, table),
-      el("div", { class: "actions" }, el("a", { class: "btn", href: "index.html#leaderboard" }, "Back to the homepage")));
-    XQ.loadBoard(table, null, [], R.name);
+      shown ? el("div", { class: "board" }, table) : "",
+      el("div", { class: "actions" }, el("a", { class: "btn", href: shown ? "index.html#leaderboard" : "index.html" }, "Back to the homepage")));
+    if (shown) XQ.loadBoard(table, null, [], R.name);
   }
 
   // ---- Start ----
