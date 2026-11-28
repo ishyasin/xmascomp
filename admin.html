@@ -86,7 +86,7 @@
             <h2>Schedule</h2>
             <div class="field"><label for="fName">Event name</label><input id="fName" type="text" maxlength="80" required></div>
             <div class="field"><label for="fStart">Opens</label><input id="fStart" type="datetime-local" required><span class="hint">The homepage counts down to this time. Entries open at this time.</span></div>
-            <div class="field"><label for="fEnd">Closes</label><input id="fEnd" type="datetime-local" required><span class="hint">No new entries after this. Keep it within 24 hours of opening so the same email can't enter twice.</span></div>
+            <div class="field"><label for="fEnd">Closes</label><input id="fEnd" type="datetime-local" required><span class="hint">No new entries after this. All entries (names, emails and scores) are deleted automatically 7 days after this time, so reveal the results and contact winners before then.</span></div>
           </div>
           <div class="box">
             <h2>Competitions</h2>
@@ -438,7 +438,7 @@
       const tr = document.createElement("tr"); if (e.hidden) tr.className = "is-hidden";
       const name = td(e.player_name);
       if (e.hidden) { const s = document.createElement("span"); s.className = "sub"; s.textContent = "Hidden from leaderboard"; name.appendChild(s); }
-      const mail = td(e.email || "Deleted after 24 h"); if (!e.email) mail.style.color = "#a9b6cc";
+      const mail = td(e.email || "Deleted"); if (!e.email) mail.style.color = "#a9b6cc";
       const when = td(fmt(e.started_at)); const st = document.createElement("span"); st.className = "sub"; st.textContent = e.finished_at ? "Finished" : "Not finished"; when.appendChild(st);
       const acts = document.createElement("td"); acts.className = "acts";
       const b = (label, cls, fn, aria) => { const x = document.createElement("button"); x.type = "button"; x.textContent = label; if (cls) x.className = cls; x.setAttribute("aria-label", aria); x.addEventListener("click", fn); return x; };
